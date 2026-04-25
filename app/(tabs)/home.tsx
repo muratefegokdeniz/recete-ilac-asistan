@@ -138,9 +138,11 @@ export default function HomeScreen() {
     const key = `${item.medicine.id}_${item.time}`;
     setConfirmingId(key);
     try {
+      const todayStr = new Date().toISOString().split("T")[0];
+      const scheduledTime = `${todayStr}T${item.time}`;
       const dose: TakenDose = {
-        id: `${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        scheduledTime: item.time,
+        id: `${item.medicine.id}_${scheduledTime}`,
+        scheduledTime,
         takenAt: new Date().toISOString(),
       };
       await markDoseTaken(dose, item.medicine.id);
@@ -152,7 +154,7 @@ export default function HomeScreen() {
 
   function isDoseTaken(item: ScheduleItem): boolean {
     return item.doses.some(
-      (d) => d.scheduledTime === item.time && d.takenAt != null && !d.skipped
+      (d) => d.scheduledTime.includes(item.time) && d.takenAt != null && !d.skipped
     );
   }
 
@@ -333,7 +335,7 @@ export default function HomeScreen() {
                                 >
                                   {confirming
                                     ? <ActivityIndicator size="small" color={Colors.textInverse} />
-                                    : <Text style={styles.confirmBtnText}>Onayla</Text>}
+                                    : <Text style={styles.confirmBtnText}>Aldım</Text>}
                                 </TouchableOpacity>
                               )}
                             </View>
