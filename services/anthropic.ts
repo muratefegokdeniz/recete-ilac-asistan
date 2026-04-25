@@ -171,6 +171,33 @@ Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
   return response.content[0].type === "text" ? response.content[0].text : "";
 }
 
+export async function getMedicineInfoByName(name: string): Promise<PrescriptionMedicine> {
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 1024,
+    system: `Sen bir eczacı asistanısın. Türkçe ilaç bilgisi veriyorsun. Yanıtını JSON formatında ver.`,
+    messages: [{
+      role: "user",
+      content: `"${name}" ilacı hakkında bilgi ver. JSON formatında yanıt ver:
+{
+  "name": "İlaç adı ve formu",
+  "dosage": "Standart doz",
+  "frequency": "Kullanım sıklığı",
+  "duration": null,
+  "instructions": "Nasıl kullanılır (tok/aç karnına vs)",
+  "purpose": "Ne için kullanılır (2-3 cümle)",
+  "sideEffects": "Önemli yan etkiler"
+}`,
+    }],
+  });
+  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  try {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]) as PrescriptionMedicine;
+  } catch {}
+  return { name };
+}
+
 export async function chatWithAssistant(
   messages: { role: "user" | "assistant"; content: string }[],
   userMessage: string

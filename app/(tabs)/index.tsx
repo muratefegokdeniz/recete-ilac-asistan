@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Card, Button, Badge, SectionHeader, EmptyState } from "../../components/ui";
-import { analyzePrescription } from "../../services/anthropic";
+import { analyzePrescription, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 
@@ -35,6 +35,10 @@ export default function PrescriptionScreen() {
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [pendingAnalysis, setPendingAnalysis] = useState<PrescriptionAnalysis | null>(null);
   const [medicineTimings, setMedicineTimings] = useState<{ name: string; frequency: string; firstTime: string }[]>([]);
+
+  const [correctingMed, setCorrectingMed] = useState<{ prescId: string; medIdx: number } | null>(null);
+  const [correctName, setCorrectName] = useState("");
+  const [correctLoading, setCorrectLoading] = useState(false);
 
   // Scanner state
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -172,6 +176,31 @@ export default function PrescriptionScreen() {
     ]);
   }
 
+  async function correctMedicineName() {
+    if (!correctingMed || !correctName.trim()) return;
+    setCorrectLoading(true);
+    try {
+      const newInfo = await getMedicineInfoByName(correctName.trim());
+      setPrescriptions((prev) =>
+        prev.map((p) => {
+          if (p.id !== correctingMed.prescId) return p;
+          const updatedMeds = p.analysis.medicines.map((m, idx) =>
+            idx === correctingMed.medIdx ? { ...m, ...newInfo, name: newInfo.name || correctName.trim() } : m
+          );
+          const updated = { ...p, analysis: { ...p.analysis, medicines: updatedMeds } };
+          savePrescription(updated);
+          return updated;
+        })
+      );
+      setCorrectingMed(null);
+      setCorrectName("");
+    } catch {
+      Alert.alert("Hata", "İlaç bilgisi alınamadı.");
+    } finally {
+      setCorrectLoading(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -267,7 +296,43 @@ export default function PrescriptionScreen() {
                           </View>
                         )}
                         <View style={styles.expandedMedInfo}>
-                          <Text style={styles.expandedMedName}>{m.name}</Text>
+                          {correctingMed?.prescId === p.id && correctingMed?.medIdx === i ? (
+                            <View style={styles.correctRow}>
+                              <TextInput
+                                style={styles.correctInput}
+                                value={correctName}
+                                onChangeText={setCorrectName}
+                                placeholder="Doğru ilaç adı..."
+                                placeholderTextColor={Colors.textMuted}
+                                autoFocus
+                              />
+                              <TouchableOpacity
+                                onPress={correctMedicineName}
+                                disabled={correctLoading}
+                                style={styles.correctConfirmBtn}
+                              >
+                                {correctLoading
+                                  ? <ActivityIndicator size="small" color={Colors.textInverse} />
+                                  : <Text style={styles.correctConfirmText}>Onayla</Text>}
+                              </TouchableOpacity>
+                              <TouchableOpacity
+                                onPress={() => { setCorrectingMed(null); setCorrectName(""); }}
+                                style={styles.correctCancelBtn}
+                              >
+                                <Text style={styles.correctCancelText}>İptal</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            <View style={styles.expandedMedNameRow}>
+                              <Text style={styles.expandedMedName}>{m.name}</Text>
+                              <TouchableOpacity
+                                onPress={() => { setCorrectingMed({ prescId: p.id, medIdx: i }); setCorrectName(m.name); }}
+                                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                              >
+                                <Text style={styles.correctLink}>Düzelt?</Text>
+                              </TouchableOpacity>
+                            </View>
+                          )}
                           <View style={styles.expandedMedMeta}>
                             {m.dosage && <Text style={styles.expandedMedDetail}>{m.dosage}</Text>}
                             {m.frequency && <Text style={styles.expandedMedDetail}>{m.frequency}</Text>}
@@ -831,4 +896,23 @@ const styles = StyleSheet.create({
   sideEffectHeader: { flexDirection: "row", alignItems: "center", gap: 4, marginBottom: 4 },
   sideEffectTitle: { fontSize: 12, fontWeight: "700", color: Colors.warning },
   sideEffectText: { fontSize: 13, color: Colors.text, lineHeight: 18 },
+
+  expandedMedNameRow: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" },
+  correctLink: { fontSize: 12, color: Colors.primary, fontWeight: "600", textDecorationLine: "underline" },
+  correctRow: { flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 4 },
+  correctInput: {
+    flex: 1, minWidth: 120, borderWidth: 1.5, borderColor: Colors.primary,
+    borderRadius: Radius.md, paddingHorizontal: 10, paddingVertical: 6,
+    fontSize: 13, color: Colors.text, backgroundColor: Colors.background,
+  },
+  correctConfirmBtn: {
+    backgroundColor: Colors.primary, borderRadius: Radius.md,
+    paddingHorizontal: 12, paddingVertical: 6, minWidth: 60, alignItems: "center",
+  },
+  correctConfirmText: { fontSize: 12, fontWeight: "700", color: Colors.textInverse },
+  correctCancelBtn: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  correctCancelText: { fontSize: 12, color: Colors.textSecondary },
 });
