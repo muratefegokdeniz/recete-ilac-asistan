@@ -23,6 +23,15 @@ function TabIcon({
 const tabScreens = (
   <>
     <Tabs.Screen
+      name="home"
+      options={{
+        title: "Ana Sayfa",
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon name="dashboard" focused={focused} color={color} />
+        ),
+      }}
+    />
+    <Tabs.Screen
       name="index"
       options={{
         title: "Reçete",
