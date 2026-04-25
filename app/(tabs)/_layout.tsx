@@ -59,6 +59,15 @@ const tabScreens = (
       }}
     />
     <Tabs.Screen
+      name="calendar"
+      options={{
+        title: "Takvim",
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon name="calendar-month" focused={focused} color={color} />
+        ),
+      }}
+    />
+    <Tabs.Screen
       name="chat"
       options={{
         title: "Asistan",

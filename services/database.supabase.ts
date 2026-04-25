@@ -200,6 +200,17 @@ export async function getTodayDoses(activeMedicineId: string): Promise<TakenDose
   return (data ?? []).map(rowToTakenDose);
 }
 
+export async function getDosesForDateRange(activeMedicineId: string, startDate: string, endDate: string): Promise<TakenDose[]> {
+  const { data, error } = await supabase
+    .from("taken_doses")
+    .select("*")
+    .eq("active_medicine_id", activeMedicineId)
+    .gte("scheduled_time", `${startDate}T00:00:00`)
+    .lte("scheduled_time", `${endDate}T23:59:59`);
+  if (error) throw error;
+  return (data ?? []).map(rowToTakenDose);
+}
+
 export async function getDosesForDate(activeMedicineId: string, date: string): Promise<TakenDose[]> {
   const { data, error } = await supabase
     .from("taken_doses")
