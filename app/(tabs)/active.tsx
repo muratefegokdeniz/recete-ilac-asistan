@@ -49,7 +49,7 @@ export default function ActiveScreen() {
   const [form, setForm] = useState({
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
-    endDate: "", reminderTime: "08:00", notes: "", fromCabinetId: "",
+    endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "",
   });
 
   useFocusEffect(useCallback(() => {
@@ -100,24 +100,34 @@ export default function ActiveScreen() {
   }
 
   function selectFromCabinet(med: Medicine) {
-    setForm((f) => ({ ...f, medicineName: med.name, dosage: med.dosage ?? "", frequency: med.frequency ?? f.frequency, mealTiming: med.mealTiming ?? f.mealTiming, fromCabinetId: med.id }));
+    const freq = med.frequency ?? FREQUENCY_OPTIONS[0]!;
+    setForm((f) => ({
+      ...f,
+      medicineName: med.name,
+      dosage: med.dosage ?? "",
+      frequency: freq,
+      mealTiming: med.mealTiming ?? f.mealTiming,
+      fromCabinetId: med.id,
+      reminderTimes: calcReminderTimes(f.reminderTimes[0] ?? "08:00", freq),
+    }));
     setAddMode("manual");
   }
 
   async function handleAdd() {
     if (!form.medicineName.trim()) { Alert.alert("Eksik Bilgi", "İlaç adı gereklidir."); return; }
+    const validTimes = form.reminderTimes.map((t) => t.trim()).filter((t) => /^\d{2}:\d{2}$/.test(t));
+    if (validTimes.length === 0) { Alert.alert("Eksik Bilgi", "En az bir geçerli saat girin (SS:DD)."); return; }
     setLoading(true);
     try {
-      const reminderTimes = calcReminderTimes(form.reminderTime, form.frequency);
       const notifIds: string[] = [];
-      for (const t of reminderTimes) {
+      for (const t of validTimes) {
         try { const id = await scheduleDailyReminder(form.medicineName, t); if (id) notifIds.push(id); } catch {}
       }
       const med: ActiveMedicine = {
         id: Date.now().toString(), medicineId: form.fromCabinetId, medicineName: form.medicineName,
         dosage: form.dosage || "Belirtilmedi", frequency: form.frequency,
         mealTiming: form.mealTiming || undefined, startDate: form.startDate,
-        endDate: form.endDate || undefined, reminderTimes,
+        endDate: form.endDate || undefined, reminderTimes: validTimes,
         notificationIds: notifIds.length > 0 ? notifIds : undefined,
         notes: form.notes || undefined, takenDoses: [],
       };
@@ -176,7 +186,7 @@ export default function ActiveScreen() {
   }
 
   function resetForm() {
-    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTime: "08:00", notes: "", fromCabinetId: "" });
+    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "" });
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -340,17 +350,48 @@ export default function ActiveScreen() {
                         <MaterialIcons name="notifications-active" size={18} color={Colors.primary} />
                         <Text style={styles.bentoSectionTitle}>Hatırlatıcı & Tarih</Text>
                       </View>
-                      <FormField label="İlk Hatırlatma Saati" value={form.reminderTime} onChange={(v) => setForm((f) => ({ ...f, reminderTime: v }))} placeholder="08:00" />
-                      {(() => {
-                        const times = calcReminderTimes(form.reminderTime, form.frequency);
-                        if (times.length <= 1) return null;
-                        return (
-                          <View style={styles.timesPreview}>
-                            <MaterialIcons name="alarm" size={14} color={Colors.primary} />
-                            <Text style={styles.timesPreviewText}>Otomatik saatler: {times.join(" · ")}</Text>
+                      <View style={styles.formField}>
+                        <View style={styles.reminderHeader}>
+                          <Text style={styles.formLabel}>Hatırlatma Saatleri</Text>
+                          <TouchableOpacity
+                            style={styles.addTimeBtn}
+                            onPress={() => setForm((f) => ({ ...f, reminderTimes: [...f.reminderTimes, "08:00"] }))}
+                          >
+                            <MaterialIcons name="add" size={14} color={Colors.primary} />
+                            <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
+                          </TouchableOpacity>
+                        </View>
+                        {form.reminderTimes.map((t, idx) => (
+                          <View key={idx} style={styles.timeRow}>
+                            <MaterialIcons name="alarm" size={16} color={Colors.primary} style={{ marginRight: 4 }} />
+                            <TextInput
+                              style={styles.timeInput}
+                              value={t}
+                              onChangeText={(v) => setForm((f) => {
+                                const updated = [...f.reminderTimes];
+                                updated[idx] = v;
+                                return { ...f, reminderTimes: updated };
+                              })}
+                              placeholder="08:00"
+                              placeholderTextColor={Colors.textMuted}
+                              keyboardType="numbers-and-punctuation"
+                              maxLength={5}
+                            />
+                            {form.reminderTimes.length > 1 && (
+                              <TouchableOpacity
+                                style={styles.removeTimeBtn}
+                                onPress={() => setForm((f) => ({
+                                  ...f,
+                                  reminderTimes: f.reminderTimes.filter((_, i) => i !== idx),
+                                }))}
+                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                              >
+                                <MaterialIcons name="remove-circle-outline" size={20} color={Colors.danger} />
+                              </TouchableOpacity>
+                            )}
                           </View>
-                        );
-                      })()}
+                        ))}
+                      </View>
                       <FormField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} placeholder="YYYY-MM-DD" />
                       <FormField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="YYYY-MM-DD" />
                       <FormField label="Notlar" value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Aç karnına al gibi notlar..." multiline />
@@ -756,8 +797,23 @@ const styles = StyleSheet.create({
   adviceTitle: { fontSize: 17, fontWeight: "700", color: Colors.text },
   adviceText: { fontSize: 15, color: Colors.text, lineHeight: 24, backgroundColor: Colors.surfaceAlt, padding: 16, borderRadius: Radius.lg },
 
-  timesPreview: { flexDirection: "row", alignItems: "center", gap: 6, backgroundColor: Colors.primaryLight, padding: 10, borderRadius: Radius.md },
-  timesPreviewText: { fontSize: 13, color: Colors.primary, fontWeight: "500" },
+  reminderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  addTimeBtn: {
+    flexDirection: "row", alignItems: "center", gap: 3,
+    backgroundColor: Colors.primaryLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full,
+  },
+  addTimeBtnText: { fontSize: 12, fontWeight: "700", color: Colors.primary },
+  timeRow: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md,
+    paddingHorizontal: 10, paddingVertical: 4,
+    borderWidth: 1, borderColor: Colors.border,
+  },
+  timeInput: {
+    flex: 1, fontSize: 16, fontWeight: "700", color: Colors.text,
+    paddingVertical: 8,
+  },
+  removeTimeBtn: { padding: 2 },
 
   formField: { gap: 6 },
   formLabel: { fontSize: 13, fontWeight: "600", color: Colors.text },
