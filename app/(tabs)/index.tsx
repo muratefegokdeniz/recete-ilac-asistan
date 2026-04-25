@@ -220,7 +220,7 @@ export default function PrescriptionScreen() {
                     <View style={styles.prescMedNames}>
                       {p.analysis.medicines.slice(0, 3).map((m, i) => (
                         <View key={i} style={styles.medNameChip}>
-                          <Text style={styles.medNameChipText} numberOfLines={1}>{m.name}</Text>
+                          <Text style={styles.medNameChipText}>{m.name}</Text>
                         </View>
                       ))}
                       {p.analysis.medicines.length > 3 && (
