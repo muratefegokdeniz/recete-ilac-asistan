@@ -350,28 +350,21 @@ export default function ActiveScreen() {
                         <MaterialIcons name="notifications-active" size={18} color={Colors.primary} />
                         <Text style={styles.bentoSectionTitle}>Hatırlatıcı & Tarih</Text>
                       </View>
-                      <View style={styles.formField}>
+                      <View>
                         <View style={styles.reminderHeader}>
                           <Text style={styles.formLabel}>Hatırlatma Saatleri</Text>
-                          <TouchableOpacity
-                            style={styles.addTimeBtn}
-                            onPress={() => setForm((f) => ({ ...f, reminderTimes: [...f.reminderTimes, "08:00"] }))}
-                          >
-                            <MaterialIcons name="add" size={14} color={Colors.primary} />
-                            <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
-                          </TouchableOpacity>
                         </View>
                         {form.reminderTimes.map((t, idx) => (
                           <View key={idx} style={styles.timeRow}>
-                            <MaterialIcons name="alarm" size={16} color={Colors.primary} style={{ marginRight: 4 }} />
+                            <MaterialIcons name="alarm" size={16} color={Colors.primary} />
                             <TextInput
                               style={styles.timeInput}
                               value={t}
-                              onChangeText={(v) => setForm((f) => {
-                                const updated = [...f.reminderTimes];
+                              onChangeText={(v) => {
+                                const updated = [...form.reminderTimes];
                                 updated[idx] = v;
-                                return { ...f, reminderTimes: updated };
-                              })}
+                                setForm((f) => ({ ...f, reminderTimes: updated }));
+                              }}
                               placeholder="08:00"
                               placeholderTextColor={Colors.textMuted}
                               keyboardType="numbers-and-punctuation"
@@ -379,18 +372,25 @@ export default function ActiveScreen() {
                             />
                             {form.reminderTimes.length > 1 && (
                               <TouchableOpacity
-                                style={styles.removeTimeBtn}
-                                onPress={() => setForm((f) => ({
-                                  ...f,
-                                  reminderTimes: f.reminderTimes.filter((_, i) => i !== idx),
-                                }))}
-                                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                                onPress={() => {
+                                  const updated = form.reminderTimes.filter((_, i) => i !== idx);
+                                  setForm((f) => ({ ...f, reminderTimes: updated }));
+                                }}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
                               >
-                                <MaterialIcons name="remove-circle-outline" size={20} color={Colors.danger} />
+                                <MaterialIcons name="remove-circle-outline" size={22} color={Colors.danger} />
                               </TouchableOpacity>
                             )}
                           </View>
                         ))}
+                        <TouchableOpacity
+                          style={styles.addTimeBtn}
+                          onPress={() => setForm((f) => ({ ...f, reminderTimes: [...f.reminderTimes, "08:00"] }))}
+                          activeOpacity={0.7}
+                        >
+                          <MaterialIcons name="add-circle-outline" size={16} color={Colors.primary} />
+                          <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
+                        </TouchableOpacity>
                       </View>
                       <FormField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} placeholder="YYYY-MM-DD" />
                       <FormField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="YYYY-MM-DD" />
@@ -797,21 +797,23 @@ const styles = StyleSheet.create({
   adviceTitle: { fontSize: 17, fontWeight: "700", color: Colors.text },
   adviceText: { fontSize: 15, color: Colors.text, lineHeight: 24, backgroundColor: Colors.surfaceAlt, padding: 16, borderRadius: Radius.lg },
 
-  reminderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  reminderHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
   addTimeBtn: {
-    flexDirection: "row", alignItems: "center", gap: 3,
-    backgroundColor: Colors.primaryLight, paddingHorizontal: 10, paddingVertical: 5, borderRadius: Radius.full,
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    backgroundColor: Colors.primaryLight, paddingVertical: 10, borderRadius: Radius.md,
+    marginTop: 8, borderWidth: 1, borderColor: Colors.primary + "40",
   },
-  addTimeBtnText: { fontSize: 12, fontWeight: "700", color: Colors.primary },
+  addTimeBtnText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
   timeRow: {
-    flexDirection: "row", alignItems: "center", gap: 6,
+    flexDirection: "row", alignItems: "center", gap: 8,
     backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md,
-    paddingHorizontal: 10, paddingVertical: 4,
+    paddingHorizontal: 12, paddingVertical: 2,
     borderWidth: 1, borderColor: Colors.border,
+    marginBottom: 8,
   },
   timeInput: {
     flex: 1, fontSize: 16, fontWeight: "700", color: Colors.text,
-    paddingVertical: 8,
+    paddingVertical: 10,
   },
   removeTimeBtn: { padding: 2 },
 
