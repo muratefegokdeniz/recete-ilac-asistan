@@ -18,6 +18,7 @@ import {
   getAllMedicines,
   getAllPrescriptions,
   getTodayDoses,
+  getDosesForDate,
   markDoseTaken,
 } from "../../services/database";
 import { ActiveMedicine, Medicine, SavedPrescription, TakenDose } from "../../types";
@@ -72,6 +73,7 @@ export default function HomeScreen() {
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [prescriptions, setPrescriptions] = useState<SavedPrescription[]>([]);
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([]);
+  const [weeklyData, setWeeklyData] = useState<{ label: string; pct: number; taken: number; total: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
 
@@ -93,7 +95,7 @@ export default function HomeScreen() {
       setMedicines(meds);
       setPrescriptions(prescs);
 
-      // Build schedule items: each medicine × each reminder time
+      // Build schedule items for today
       const items: ScheduleItem[] = [];
       for (const am of ams) {
         const doses = await getTodayDoses(am.id);
@@ -103,6 +105,30 @@ export default function HomeScreen() {
       }
       items.sort((a, b) => a.time.localeCompare(b.time));
       setScheduleItems(items);
+
+      // Build weekly adherence data (last 7 days)
+      const DAY_LABELS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+      const weekly: { label: string; pct: number; taken: number; total: number }[] = [];
+      for (let d = 6; d >= 0; d--) {
+        const date = new Date();
+        date.setDate(date.getDate() - d);
+        const dateStr = date.toISOString().split("T")[0]!;
+        const label = d === 0 ? "Bug" : DAY_LABELS[date.getDay() === 0 ? 6 : date.getDay() - 1]!;
+        let totalDoses = 0;
+        let takenDoses = 0;
+        for (const am of ams) {
+          const dayDoses = await getDosesForDate(am.id, dateStr);
+          totalDoses += am.reminderTimes.length;
+          takenDoses += dayDoses.filter((dose) => dose.takenAt != null && !dose.skipped).length;
+        }
+        weekly.push({
+          label,
+          pct: totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0,
+          taken: takenDoses,
+          total: totalDoses,
+        });
+      }
+      setWeeklyData(weekly);
     } finally {
       setLoading(false);
     }
@@ -430,6 +456,11 @@ export default function HomeScreen() {
           </View>
         </View>
 
+        {/* Weekly Adherence Chart */}
+        {weeklyData.length > 0 && activeMeds.length > 0 && (
+          <WeeklyChart data={weeklyData} />
+        )}
+
         {/* Progress Banner */}
         {todayTotal > 0 && (
           <View style={styles.progressBanner}>
@@ -475,6 +506,170 @@ function StatCard({
     </View>
   );
 }
+
+function WeeklyChart({ data }: { data: { label: string; pct: number; taken: number; total: number }[] }) {
+  const [tooltip, setTooltip] = useState<number | null>(null);
+  const BAR_HEIGHT = 120;
+
+  const avgPct = data.length > 0
+    ? Math.round(data.reduce((s, d) => s + d.pct, 0) / data.length)
+    : 0;
+
+  return (
+    <View style={chartStyles.card}>
+      <View style={chartStyles.header}>
+        <View style={chartStyles.titleRow}>
+          <MaterialIcons name="bar-chart" size={20} color={Colors.primary} />
+          <Text style={chartStyles.title}>Haftalık Uyum</Text>
+        </View>
+        <View style={chartStyles.avgBadge}>
+          <Text style={chartStyles.avgText}>Ort. %{avgPct}</Text>
+        </View>
+      </View>
+
+      <View style={chartStyles.chartArea}>
+        {data.map((day, i) => {
+          const isToday = i === data.length - 1;
+          const barH = Math.max(4, Math.round((day.pct / 100) * BAR_HEIGHT));
+          const barColor = day.pct >= 80
+            ? Colors.primary
+            : day.pct >= 50
+            ? Colors.warning
+            : day.total === 0
+            ? Colors.border
+            : Colors.danger;
+          const showTip = tooltip === i;
+
+          return (
+            <TouchableOpacity
+              key={i}
+              style={chartStyles.barCol}
+              onPress={() => setTooltip(showTip ? null : i)}
+              activeOpacity={0.8}
+            >
+              {showTip && (
+                <View style={chartStyles.tooltip}>
+                  <Text style={chartStyles.tooltipText}>
+                    {day.total === 0 ? "Doz yok" : `${day.taken}/${day.total} doz`}
+                  </Text>
+                  <Text style={chartStyles.tooltipPct}>%{day.pct}</Text>
+                </View>
+              )}
+              <View style={[chartStyles.barBg, { height: BAR_HEIGHT }]}>
+                <View
+                  style={[
+                    chartStyles.barFill,
+                    { height: barH, backgroundColor: barColor },
+                    isToday && chartStyles.barToday,
+                  ]}
+                />
+              </View>
+              <Text style={[chartStyles.barLabel, isToday && chartStyles.barLabelToday]}>
+                {day.label}
+              </Text>
+              <Text style={chartStyles.barPct}>%{day.pct}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      <View style={chartStyles.legend}>
+        {[
+          { color: Colors.primary, label: "≥80% İyi" },
+          { color: Colors.warning, label: "50–79% Orta" },
+          { color: Colors.danger, label: "<50% Düşük" },
+        ].map((l) => (
+          <View key={l.label} style={chartStyles.legendItem}>
+            <View style={[chartStyles.legendDot, { backgroundColor: l.color }]} />
+            <Text style={chartStyles.legendLabel}>{l.label}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
+
+const chartStyles = StyleSheet.create({
+  card: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: 20,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    ...Shadows.sm,
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  title: { fontSize: 17, fontWeight: "700", color: Colors.text },
+  avgBadge: {
+    backgroundColor: Colors.primaryLight,
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: Radius.full,
+  },
+  avgText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
+  chartArea: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 6,
+    paddingHorizontal: 4,
+  },
+  barCol: {
+    flex: 1,
+    alignItems: "center",
+    gap: 6,
+    position: "relative",
+  },
+  barBg: {
+    width: "100%",
+    backgroundColor: Colors.surfaceAlt,
+    borderRadius: Radius.sm,
+    justifyContent: "flex-end",
+    overflow: "hidden",
+  },
+  barFill: {
+    width: "100%",
+    borderRadius: Radius.sm,
+  },
+  barToday: {
+    shadowColor: Colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  barLabel: { fontSize: 11, color: Colors.textMuted, fontWeight: "500" },
+  barLabelToday: { color: Colors.primary, fontWeight: "700" },
+  barPct: { fontSize: 10, color: Colors.textSecondary },
+  tooltip: {
+    position: "absolute",
+    top: -52,
+    backgroundColor: Colors.text,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    zIndex: 10,
+    alignItems: "center",
+    minWidth: 64,
+  },
+  tooltipText: { fontSize: 11, color: Colors.textInverse },
+  tooltipPct: { fontSize: 13, fontWeight: "800", color: "#89f5e7" },
+  legend: {
+    flexDirection: "row",
+    gap: 16,
+    marginTop: 16,
+    flexWrap: "wrap",
+  },
+  legendItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  legendDot: { width: 8, height: 8, borderRadius: 4 },
+  legendLabel: { fontSize: 11, color: Colors.textMuted },
+});
 
 const statStyles = StyleSheet.create({
   card: {
