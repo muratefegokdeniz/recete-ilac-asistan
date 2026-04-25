@@ -12,7 +12,7 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
@@ -62,12 +62,18 @@ interface FormState {
   imageUri?: string;
 }
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
 const CARD_GAP = 12;
 const CARD_PADDING = 16;
-const CARD_WIDTH = (SCREEN_WIDTH - CARD_PADDING * 2 - CARD_GAP) / 2;
+
+function getCardWidth(screenWidth: number): number {
+  const numCols = screenWidth > 900 ? 4 : screenWidth > 600 ? 3 : 2;
+  return (screenWidth - CARD_PADDING * 2 - CARD_GAP * (numCols - 1)) / numCols;
+}
 
 export default function CabinetScreen() {
+  const { width: screenWidth } = useWindowDimensions();
+  const cardWidth = getCardWidth(screenWidth);
+
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
@@ -199,6 +205,9 @@ export default function CabinetScreen() {
   );
   const expiredCount = medicines.filter((m) => getExpiryStatus(m.expiryDate) === "expired").length;
   const soonCount = medicines.filter((m) => getExpiryStatus(m.expiryDate) === "soon").length;
+  const nearestSkt = medicines
+    .filter((m) => m.expiryDate && getExpiryStatus(m.expiryDate) !== "expired")
+    .sort((a, b) => (a.expiryDate ?? "").localeCompare(b.expiryDate ?? ""))[0]?.expiryDate ?? null;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -244,6 +253,26 @@ export default function CabinetScreen() {
         </View>
       </View>
 
+      {/* Stats Row */}
+      <View style={styles.statsRow}>
+        <View style={styles.statBox}>
+          <Text style={styles.statValue}>{medicines.length}</Text>
+          <Text style={styles.statLabel}>Toplam İlaç</Text>
+        </View>
+        <View style={[styles.statBox, styles.statDivider]}>
+          <Text style={[styles.statValue, expiredCount > 0 && { color: Colors.danger }]}>{expiredCount}</Text>
+          <Text style={styles.statLabel}>Süresi Dolmuş</Text>
+        </View>
+        <View style={[styles.statBox, styles.statDivider]}>
+          <Text style={[styles.statValue, soonCount > 0 && { color: Colors.accent }]}>{soonCount}</Text>
+          <Text style={styles.statLabel}>Yakında Bitecek</Text>
+        </View>
+        <View style={[styles.statBox, styles.statDivider]}>
+          <Text style={[styles.statValue, { fontSize: 13 }]}>{nearestSkt ?? "—"}</Text>
+          <Text style={styles.statLabel}>En Yakın SKT</Text>
+        </View>
+      </View>
+
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {filtered.length === 0 ? (
           <EmptyState
@@ -264,7 +293,7 @@ export default function CabinetScreen() {
                 return (
                   <TouchableOpacity
                     key={med.id}
-                    style={styles.card}
+                    style={[styles.card, { width: cardWidth }]}
                     onPress={() => setSelectedMedicine(med)}
                     activeOpacity={0.88}
                   >
@@ -593,6 +622,36 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   scrollContent: { padding: CARD_PADDING, paddingBottom: 40, gap: 20 },
 
+  // Stats row
+  statsRow: {
+    flexDirection: "row",
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  statBox: {
+    flex: 1,
+    alignItems: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+  },
+  statDivider: {
+    borderLeftWidth: 1,
+    borderLeftColor: Colors.border,
+  },
+  statValue: {
+    fontSize: 20,
+    fontWeight: "800",
+    color: Colors.text,
+  },
+  statLabel: {
+    fontSize: 10,
+    color: Colors.textMuted,
+    marginTop: 2,
+    textAlign: "center",
+    fontWeight: "500",
+  },
+
   // Card grid
   grid: {
     flexDirection: "row",
@@ -600,7 +659,6 @@ const styles = StyleSheet.create({
     gap: CARD_GAP,
   },
   card: {
-    width: CARD_WIDTH,
     backgroundColor: Colors.surface,
     borderRadius: Radius.xl,
     overflow: "hidden",
