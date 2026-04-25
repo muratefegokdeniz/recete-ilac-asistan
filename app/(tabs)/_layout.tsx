@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, StyleSheet, Platform } from "react-native";
+import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Colors } from "../../constants/Colors";
 import WebSidebar from "../../components/WebSidebar";
@@ -71,7 +71,10 @@ const tabScreens = (
 );
 
 export default function TabsLayout() {
-  if (Platform.OS === "web") {
+  const { width } = useWindowDimensions();
+  const showSidebar = Platform.OS === "web" && width >= 768;
+
+  if (showSidebar) {
     return (
       <View style={styles.webContainer}>
         <WebSidebar />
