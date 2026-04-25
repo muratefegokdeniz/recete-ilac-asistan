@@ -1,30 +1,61 @@
 {
   "expo": {
-    "name": "recete-ilac-asistan",
+    "name": "İlaç Asistanı",
     "slug": "recete-ilac-asistan",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+    "scheme": "ilacasistan",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#f5faf8"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor.",
+        "NSPhotoLibraryUsageDescription": "Galerinizden reçete veya ilaç fotoğrafı seçmek için erişim gerekiyor.",
+        "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#f5faf8"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-sqlite",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#00685f"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Galerinizden ilaç fotoğrafı seçmek için erişim gerekiyor.",
+          "cameraPermission": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor."
+        }
+      ]
+    ]
   }
 }
