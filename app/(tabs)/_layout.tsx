@@ -98,6 +98,7 @@ export default function TabsLayout() {
         <WebSidebar />
         <View style={styles.webContent}>
           <Tabs
+            initialRouteName="home"
             screenOptions={{
               headerShown: false,
               tabBarStyle: { display: "none" },
@@ -112,6 +113,7 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarStyle: styles.tabBar,
