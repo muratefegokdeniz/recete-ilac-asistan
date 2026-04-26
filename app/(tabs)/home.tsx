@@ -20,6 +20,7 @@ import {
   getTodayDoses,
   getDosesForDate,
   markDoseTaken,
+  getProfile,
 } from "../../services/database";
 import { ActiveMedicine, Medicine, SavedPrescription, TakenDose } from "../../types";
 import { useAuth } from "../../context/AuthContext";
@@ -76,6 +77,7 @@ export default function HomeScreen() {
   const [weeklyData, setWeeklyData] = useState<{ label: string; pct: number; taken: number; total: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [displayName, setDisplayName] = useState<string>("");
 
   useFocusEffect(
     useCallback(() => {
@@ -86,11 +88,17 @@ export default function HomeScreen() {
   async function loadAll() {
     setLoading(true);
     try {
-      const [ams, meds, prescs] = await Promise.all([
+      const [ams, meds, prescs, profile] = await Promise.all([
         getAllActiveMedicines(),
         getAllMedicines(),
         getAllPrescriptions(),
+        getProfile(),
       ]);
+      if (profile?.fullName?.trim()) {
+        setDisplayName(profile.fullName.trim());
+      } else {
+        setDisplayName(user?.email?.split("@")[0] ?? "");
+      }
       setActiveMeds(ams);
       setMedicines(meds);
       setPrescriptions(prescs);
@@ -181,8 +189,7 @@ export default function HomeScreen() {
     evening: scheduleItems.filter((i) => i.slot === "evening"),
   };
 
-  const userEmail = user?.email ?? "";
-  const userName = userEmail.split("@")[0] ?? "Kullanıcı";
+  const userName = displayName || user?.email?.split("@")[0] || "Kullanıcı";
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>

@@ -21,9 +21,12 @@ function RootNavigator() {
   useEffect(() => {
     if (loading) return;
     const inAuthGroup = segments[0] === "login";
+    const inTabs = segments[0] === "(tabs)";
     if (!session && !inAuthGroup) {
       router.replace("/login");
     } else if (session && inAuthGroup) {
+      router.replace("/(tabs)/home");
+    } else if (session && !inTabs) {
       router.replace("/(tabs)/home");
     }
   }, [session, loading, segments]);
