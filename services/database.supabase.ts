@@ -254,6 +254,16 @@ export async function deletePrescription(id: string): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Login Logs ──────────────────────────────────────────────────────────────
+
+export async function logLogin(userId: string, email: string): Promise<void> {
+  await supabase.from("login_logs").insert({
+    user_id: userId,
+    email,
+    logged_in_at: new Date().toISOString(),
+  });
+}
+
 // ─── Profile ─────────────────────────────────────────────────────────────────
 
 export async function getProfile(): Promise<UserProfile | null> {
