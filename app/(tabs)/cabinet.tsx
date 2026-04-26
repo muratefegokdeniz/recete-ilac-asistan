@@ -43,10 +43,10 @@ const STATUS_CONFIG: Record<ExpiryStatus, { label: string; color: string; bg: st
   expired: { label: "Geçmiş", color: Colors.danger,   bg: Colors.dangerLight,  barColor: Colors.danger  },
 };
 
-function quantityFill(qty: number): number {
-  if (qty <= 0) return 0;
-  if (qty >= 60) return 1;
-  return Math.min(1, qty / 60);
+function quantityChip(qty: number): { label: string; color: string; bg: string } {
+  if (!qty || qty <= 0) return { label: "Stok yok",  color: Colors.danger,  bg: Colors.dangerLight };
+  if (qty <= 3)         return { label: "Az kaldı",  color: Colors.accent,  bg: Colors.accentLight };
+  return                       { label: `${qty} adet`, color: Colors.primary, bg: Colors.primaryLight };
 }
 
 interface FormState {
@@ -298,7 +298,7 @@ export default function CabinetScreen() {
               {filtered.map((med) => {
                 const status = getExpiryStatus(med.expiryDate);
                 const cfg = STATUS_CONFIG[status];
-                const fill = quantityFill(med.quantity ?? 0);
+                const qtyChip = quantityChip(med.quantity ?? 0);
 
                 return (
                   <TouchableOpacity
@@ -331,17 +331,10 @@ export default function CabinetScreen() {
                         </Text>
                       )}
 
-                      {/* Quantity */}
-                      <View style={styles.qtySection}>
-                        <View style={styles.qtyRow}>
-                          <Text style={styles.qtyLabel}>Kalan</Text>
-                          <Text style={[styles.qtyValue, { color: cfg.barColor }]}>
-                            {med.quantity ? `${med.quantity} adet` : "—"}
-                          </Text>
-                        </View>
-                        <View style={styles.progressBg}>
-                          <View style={[styles.progressFill, { width: `${Math.round(fill * 100)}%`, backgroundColor: cfg.barColor }]} />
-                        </View>
+                      {/* Quantity chip */}
+                      <View style={[styles.qtyChip, { backgroundColor: qtyChip.bg }]}>
+                        <MaterialIcons name="inventory-2" size={12} color={qtyChip.color} />
+                        <Text style={[styles.qtyChipText, { color: qtyChip.color }]}>{qtyChip.label}</Text>
                       </View>
 
                       {/* Footer */}
@@ -456,7 +449,7 @@ export default function CabinetScreen() {
                 <AiFormField label="Kullanım Talimatları" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Tok/aç karnına, su ile vs..." multiline aiFilledFields={aiFilledFields} fieldKey="description" disabled={analyzing} />
                 <AiFormField label="Yan Etkiler" value={form.sideEffects} onChange={(v) => setForm((f) => ({ ...f, sideEffects: v }))} placeholder="Olası yan etkiler..." multiline aiFilledFields={aiFilledFields} fieldKey="sideEffects" disabled={analyzing} />
                 <AiFormField label="Son Kullanma Tarihi" value={form.expiryDate} onChange={(v) => setForm((f) => ({ ...f, expiryDate: v }))} placeholder="YYYY-MM" aiFilledFields={aiFilledFields} fieldKey="expiryDate" disabled={analyzing} />
-                <AiFormField label="Adet" value={form.quantity?.toString()} onChange={(v) => setForm((f) => ({ ...f, quantity: parseInt(v) || 0 }))} placeholder="0" keyboardType="numeric" aiFilledFields={aiFilledFields} fieldKey="quantity" disabled={analyzing} />
+                <AiFormField label="Stok Adedi" hint="Elinizdeki kutu veya tablet sayısını girin" value={form.quantity?.toString()} onChange={(v) => setForm((f) => ({ ...f, quantity: parseInt(v) || 0 }))} placeholder="Örn: 2" keyboardType="numeric" aiFilledFields={aiFilledFields} fieldKey="quantity" disabled={analyzing} />
               </View>
 
               <Button title="Dolaba Ekle" onPress={saveMedicine} variant="primary" fullWidth loading={saving} disabled={analyzing} size="lg" style={{ marginTop: 8, marginBottom: 8 }} />
@@ -487,7 +480,7 @@ export default function CabinetScreen() {
               <DetailRow label="Yan Etkiler" value={selectedMedicine.sideEffects} warn />
               <DetailRow label="Son Kullanma Tarihi" value={selectedMedicine.expiryDate} />
               {selectedMedicine.quantity !== undefined && selectedMedicine.quantity > 0 && (
-                <DetailRow label="Adet" value={`${selectedMedicine.quantity} adet`} />
+                <DetailRow label="Stok Adedi" value={`${selectedMedicine.quantity} adet (elinizdeki)`} />
               )}
               <Button title="İlacı Sil" onPress={() => handleDelete(selectedMedicine.id)} variant="danger" fullWidth style={{ marginTop: 24 }} icon={<MaterialIcons name="delete" size={16} color={Colors.textInverse} />} />
             </ScrollView>
@@ -501,10 +494,10 @@ export default function CabinetScreen() {
 // ─── Sub-components ────────────────────────────────────────────────────────────
 
 function AiFormField({
-  label, value, onChange, placeholder, multiline, keyboardType,
+  label, hint, value, onChange, placeholder, multiline, keyboardType,
   aiFilledFields, fieldKey, disabled,
 }: {
-  label: string; value?: string; onChange: (v: string) => void;
+  label: string; hint?: string; value?: string; onChange: (v: string) => void;
   placeholder?: string; multiline?: boolean; keyboardType?: any;
   aiFilledFields: Set<string>; fieldKey: string; disabled?: boolean;
 }) {
@@ -520,6 +513,7 @@ function AiFormField({
           </View>
         )}
       </View>
+      {hint && <Text style={styles.formHint}>{hint}</Text>}
       <TextInput
         style={[styles.formInput, multiline && styles.formInputMulti, isAiFilled && styles.formInputAiFilled, disabled && styles.formInputDisabled]}
         value={value ?? ""}
@@ -702,17 +696,17 @@ const styles = StyleSheet.create({
   cardName: { fontSize: 13, fontWeight: "700", color: Colors.text, lineHeight: 18 },
   cardMeta: { fontSize: 11, color: Colors.textSecondary },
 
-  qtySection: { gap: 4, marginTop: 2 },
-  qtyRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-  qtyLabel: { fontSize: 11, color: Colors.textMuted },
-  qtyValue: { fontSize: 12, fontWeight: "700" },
-  progressBg: {
-    height: 5,
-    backgroundColor: Colors.surfaceAlt,
+  qtyChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    gap: 4,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
     borderRadius: Radius.full,
-    overflow: "hidden",
+    marginTop: 4,
   },
-  progressFill: { height: "100%", borderRadius: Radius.full },
+  qtyChipText: { fontSize: 11, fontWeight: "700" },
 
   cardFooter: {
     flexDirection: "row",
@@ -830,6 +824,7 @@ const styles = StyleSheet.create({
   formField: { gap: 5 },
   formLabelRow: { flexDirection: "row", alignItems: "center", gap: 6 },
   formLabel: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  formHint: { fontSize: 11, color: Colors.textMuted, marginTop: -2, marginBottom: 2 },
   aiBadge: {
     flexDirection: "row", alignItems: "center", gap: 3,
     backgroundColor: Colors.primaryLight, paddingHorizontal: 6,
