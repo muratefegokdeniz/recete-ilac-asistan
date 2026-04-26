@@ -53,6 +53,7 @@ export default function ActiveScreen() {
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
     endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "",
   });
+  const [addError, setAddError] = useState<string | null>(null);
 
   useFocusEffect(useCallback(() => {
     loadData().then(() => checkDueReminders(medicinesRef.current, doseMapRef.current));
@@ -116,9 +117,10 @@ export default function ActiveScreen() {
   }
 
   async function handleAdd() {
-    if (!form.medicineName.trim()) { Alert.alert("Eksik Bilgi", "İlaç adı gereklidir."); return; }
+    setAddError(null);
+    if (!form.medicineName.trim()) { setAddError("İlaç adı gereklidir."); return; }
     const validTimes = form.reminderTimes.map((t) => t.trim()).filter((t) => /^\d{2}:\d{2}$/.test(t));
-    if (validTimes.length === 0) { Alert.alert("Eksik Bilgi", "En az bir geçerli saat girin (SS:DD)."); return; }
+    if (validTimes.length === 0) { setAddError("En az bir geçerli saat girin (SS:DD)."); return; }
     setLoading(true);
     try {
       const notifIds: string[] = [];
@@ -138,7 +140,7 @@ export default function ActiveScreen() {
       setShowModal(false);
       resetForm();
     } catch (e: any) {
-      Alert.alert("Hata", e?.message ?? "İlaç eklenemedi.");
+      setAddError(e?.message ?? "İlaç eklenemedi. Lütfen tekrar deneyin.");
     } finally { setLoading(false); }
   }
 
@@ -198,6 +200,7 @@ export default function ActiveScreen() {
 
   function resetForm() {
     setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "" });
+    setAddError(null);
   }
 
   const today = new Date().toISOString().split("T")[0];
@@ -410,7 +413,13 @@ export default function ActiveScreen() {
                   </View>
                 </View>
 
-                <Button title="Aktif İlaçlara Ekle" onPress={handleAdd} variant="primary" fullWidth loading={loading} size="lg" style={{ marginTop: 8 }} />
+                {addError && (
+                  <View style={styles.addErrorBox}>
+                    <MaterialIcons name="error-outline" size={16} color={Colors.danger} />
+                    <Text style={styles.addErrorText}>{addError}</Text>
+                  </View>
+                )}
+                <Button title="Aktif İlaçlara Ekle" onPress={handleAdd} variant="primary" fullWidth loading={loading} size="lg" style={{ marginTop: 4 }} />
               </ScrollView>
             )}
           </KeyboardAvoidingView>
@@ -837,6 +846,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
   },
   removeTimeBtn: { padding: 2 },
+
+  addErrorBox: {
+    flexDirection: "row", alignItems: "center", gap: 8,
+    backgroundColor: Colors.dangerLight, borderRadius: Radius.md,
+    paddingHorizontal: 12, paddingVertical: 10,
+    borderWidth: 1, borderColor: Colors.danger + "40",
+  },
+  addErrorText: { flex: 1, fontSize: 13, color: Colors.danger, fontWeight: "500" },
 
   formField: { gap: 6 },
   formLabel: { fontSize: 13, fontWeight: "600", color: Colors.text },
