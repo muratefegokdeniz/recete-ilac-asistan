@@ -672,19 +672,19 @@ export default function PrescriptionScreen() {
               )}
               <PrescriptionDetail analysis={selected.analysis} />
             </ScrollView>
+
+            <ConfirmModal
+              visible={!!deleteConfirmId}
+              title="Reçeteyi Sil"
+              message="Bu reçeteyi silmek istiyor musun?"
+              confirmLabel="Sil"
+              onConfirm={confirmDelete}
+              onCancel={() => setDeleteConfirmId(null)}
+              loading={deleting}
+            />
           </SafeAreaView>
         )}
       </Modal>
-
-      <ConfirmModal
-        visible={!!deleteConfirmId}
-        title="Reçeteyi Sil"
-        message="Bu reçeteyi silmek istiyor musun?"
-        confirmLabel="Sil"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirmId(null)}
-        loading={deleting}
-      />
     </SafeAreaView>
   );
 }

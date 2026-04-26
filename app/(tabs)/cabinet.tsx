@@ -476,16 +476,6 @@ export default function CabinetScreen() {
         </SafeAreaView>
       </Modal>
 
-      <ConfirmModal
-        visible={!!deleteConfirmId}
-        title="İlacı Sil"
-        message="Bu ilacı dolabından silmek istiyor musun?"
-        confirmLabel="Sil"
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirmId(null)}
-        loading={deleting}
-      />
-
       {/* Detail Modal */}
       <Modal visible={!!selectedMedicine} animationType="slide" presentationStyle="pageSheet">
         {selectedMedicine && (
@@ -512,6 +502,16 @@ export default function CabinetScreen() {
               )}
               <Button title="İlacı Sil" onPress={() => handleDelete(selectedMedicine.id)} variant="danger" fullWidth style={{ marginTop: 24 }} icon={<MaterialIcons name="delete" size={16} color={Colors.textInverse} />} />
             </ScrollView>
+
+            <ConfirmModal
+              visible={!!deleteConfirmId}
+              title="İlacı Sil"
+              message="Bu ilacı dolabından silmek istiyor musun?"
+              confirmLabel="Sil"
+              onConfirm={confirmDelete}
+              onCancel={() => setDeleteConfirmId(null)}
+              loading={deleting}
+            />
           </SafeAreaView>
         )}
       </Modal>
