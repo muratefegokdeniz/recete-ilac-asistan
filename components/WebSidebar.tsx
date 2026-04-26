@@ -11,7 +11,7 @@ const NAV_ITEMS: {
   icon: keyof typeof MaterialIcons.glyphMap;
 }[] = [
   { label: "Ana Sayfa", route: "/(tabs)/home", icon: "dashboard" },
-  { label: "Reçete", route: "/(tabs)/", icon: "document-scanner" },
+  { label: "Reçete", route: "/(tabs)/prescriptions", icon: "document-scanner" },
   { label: "Dolabım", route: "/(tabs)/cabinet", icon: "medical-services" },
   { label: "Takip", route: "/(tabs)/active", icon: "alarm" },
   { label: "Takvim", route: "/(tabs)/calendar", icon: "calendar-month" },
@@ -25,7 +25,6 @@ export default function WebSidebar() {
   const { signOut } = useAuth();
 
   function isActive(route: string) {
-    if (route === "/(tabs)/") return pathname === "/" || pathname === "/index" || pathname === "/(tabs)/";
     return pathname.includes(route.replace("/(tabs)", ""));
   }
 

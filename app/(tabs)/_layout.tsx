@@ -32,13 +32,17 @@ const tabScreens = (
       }}
     />
     <Tabs.Screen
-      name="index"
+      name="prescriptions"
       options={{
         title: "Reçete",
         tabBarIcon: ({ focused, color }) => (
           <TabIcon name="document-scanner" focused={focused} color={color} />
         ),
       }}
+    />
+    <Tabs.Screen
+      name="index"
+      options={{ href: null }}
     />
     <Tabs.Screen
       name="cabinet"

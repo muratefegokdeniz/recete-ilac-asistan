@@ -17,8 +17,7 @@ import {
   getAllActiveMedicines,
   getAllMedicines,
   getAllPrescriptions,
-  getTodayDoses,
-  getDosesForDate,
+  getDosesForDateRange,
   markDoseTaken,
   getProfile,
 } from "../../services/database";
@@ -103,18 +102,28 @@ export default function HomeScreen() {
       setMedicines(meds);
       setPrescriptions(prescs);
 
-      // Build schedule items for today
+      const todayStr = today();
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
+      const startDateStr = sevenDaysAgo.toISOString().split("T")[0]!;
+
+      // One parallel batch per medicine covering 7 days
+      const allWeeklyDoses = await Promise.all(
+        ams.map((am) => getDosesForDateRange(am.id, startDateStr, todayStr))
+      );
+
+      // Build schedule items for today from already-fetched data
       const items: ScheduleItem[] = [];
-      for (const am of ams) {
-        const doses = await getTodayDoses(am.id);
+      ams.forEach((am, idx) => {
+        const todayDoses = allWeeklyDoses[idx]!.filter((d) => d.scheduledTime.startsWith(todayStr));
         for (const t of am.reminderTimes) {
-          items.push({ medicine: am, time: t, slot: getSlot(t), doses });
+          items.push({ medicine: am, time: t, slot: getSlot(t), doses: todayDoses });
         }
-      }
+      });
       items.sort((a, b) => a.time.localeCompare(b.time));
       setScheduleItems(items);
 
-      // Build weekly adherence data (last 7 days)
+      // Build weekly adherence data from already-fetched data
       const DAY_LABELS = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
       const weekly: { label: string; pct: number; taken: number; total: number }[] = [];
       for (let d = 6; d >= 0; d--) {
@@ -124,11 +133,11 @@ export default function HomeScreen() {
         const label = d === 0 ? "Bug" : DAY_LABELS[date.getDay() === 0 ? 6 : date.getDay() - 1]!;
         let totalDoses = 0;
         let takenDoses = 0;
-        for (const am of ams) {
-          const dayDoses = await getDosesForDate(am.id, dateStr);
+        ams.forEach((am, idx) => {
+          const dayDoses = allWeeklyDoses[idx]!.filter((d) => d.scheduledTime.startsWith(dateStr));
           totalDoses += am.reminderTimes.length;
           takenDoses += dayDoses.filter((dose) => dose.takenAt != null && !dose.skipped).length;
-        }
+        });
         weekly.push({
           label,
           pct: totalDoses > 0 ? Math.round((takenDoses / totalDoses) * 100) : 0,
@@ -202,7 +211,7 @@ export default function HomeScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerBtn}
-            onPress={() => router.push({ pathname: "/(tabs)/", params: { openScanner: "1" } } as any)}
+            onPress={() => router.push({ pathname: "/(tabs)/prescriptions", params: { openScanner: "1" } } as any)}
           >
             <MaterialIcons name="document-scanner" size={16} color={Colors.primary} />
             <Text style={styles.headerBtnText}>Reçete Ekle</Text>
@@ -395,7 +404,7 @@ export default function HomeScreen() {
                 )}
                 <TouchableOpacity
                   style={styles.aiCardBtn}
-                  onPress={() => router.push({ pathname: "/(tabs)/", params: { openScanner: "1" } } as any)}
+                  onPress={() => router.push({ pathname: "/(tabs)/prescriptions", params: { openScanner: "1" } } as any)}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.aiCardBtnText}>Reçete Ekle →</Text>
