@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Card, Button, Badge, SectionHeader, EmptyState } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
@@ -53,11 +53,19 @@ export default function PrescriptionScreen() {
   const [manualDate, setManualDate] = useState("");
   const [manualMeds, setManualMeds] = useState("");
 
+  const { openScanner: openScannerParam } = useLocalSearchParams<{ openScanner?: string }>();
+
   useFocusEffect(
     useCallback(() => {
       loadPrescriptions();
     }, [])
   );
+
+  useEffect(() => {
+    if (openScannerParam === "1") {
+      openScanner();
+    }
+  }, [openScannerParam]);
 
   async function loadPrescriptions() {
     const list = await getAllPrescriptions();

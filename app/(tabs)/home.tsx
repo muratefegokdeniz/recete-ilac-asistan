@@ -195,7 +195,7 @@ export default function HomeScreen() {
         <View style={styles.headerActions}>
           <TouchableOpacity
             style={styles.headerBtn}
-            onPress={() => router.push("/(tabs)/" as any)}
+            onPress={() => router.push({ pathname: "/(tabs)/", params: { openScanner: "1" } } as any)}
           >
             <MaterialIcons name="document-scanner" size={16} color={Colors.primary} />
             <Text style={styles.headerBtnText}>Reçete Ekle</Text>
@@ -388,7 +388,7 @@ export default function HomeScreen() {
                 )}
                 <TouchableOpacity
                   style={styles.aiCardBtn}
-                  onPress={() => router.push("/(tabs)/" as any)}
+                  onPress={() => router.push({ pathname: "/(tabs)/", params: { openScanner: "1" } } as any)}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.aiCardBtnText}>Reçete Ekle →</Text>
