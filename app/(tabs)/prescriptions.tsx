@@ -218,9 +218,13 @@ export default function PrescriptionScreen() {
       {
         text: "Sil", style: "destructive",
         onPress: async () => {
-          await deletePrescription(id);
-          await loadPrescriptions();
-          setSelected(null);
+          try {
+            await deletePrescription(id);
+            await loadPrescriptions();
+            setSelected(null);
+          } catch (e: any) {
+            Alert.alert("Hata", e?.message ?? "Reçete silinemedi.");
+          }
         },
       },
     ]);

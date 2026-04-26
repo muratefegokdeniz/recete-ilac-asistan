@@ -144,10 +144,14 @@ export default function ActiveScreen() {
     Alert.alert("İlacı Kaldır", "Aktif ilaçlardan kaldırmak istiyor musun?", [
       { text: "İptal", style: "cancel" },
       { text: "Kaldır", style: "destructive", onPress: async () => {
-        const med = medicines.find((m) => m.id === id);
-        if (med?.notificationIds) await cancelReminders(med.notificationIds);
-        await deleteActiveMedicine(id);
-        await loadData();
+        try {
+          const med = medicines.find((m) => m.id === id);
+          if (med?.notificationIds) await cancelReminders(med.notificationIds);
+          await deleteActiveMedicine(id);
+          await loadData();
+        } catch (e: any) {
+          Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+        }
       }},
     ]);
   }

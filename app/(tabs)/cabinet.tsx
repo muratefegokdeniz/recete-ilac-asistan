@@ -197,9 +197,13 @@ export default function CabinetScreen() {
     Alert.alert("İlaç Sil", "Bu ilacı dolabından silmek istiyor musun?", [
       { text: "İptal", style: "cancel" },
       { text: "Sil", style: "destructive", onPress: async () => {
-        await deleteMedicine(id);
-        await loadMedicines();
-        setSelectedMedicine(null);
+        try {
+          await deleteMedicine(id);
+          await loadMedicines();
+          setSelectedMedicine(null);
+        } catch (e: any) {
+          Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+        }
       }},
     ]);
   }
