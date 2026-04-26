@@ -18,7 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Colors, Shadows, Radius } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
 import { Medicine } from "../../types";
@@ -81,6 +81,8 @@ export default function CabinetScreen() {
   const [analyzing, setAnalyzing] = useState(false);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<FormState>({});
 
   const { openAdd } = useLocalSearchParams<{ openAdd?: string }>();
@@ -193,19 +195,24 @@ export default function CabinetScreen() {
     }
   }
 
-  async function handleDelete(id: string) {
-    Alert.alert("İlaç Sil", "Bu ilacı dolabından silmek istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Sil", style: "destructive", onPress: async () => {
-        try {
-          await deleteMedicine(id);
-          await loadMedicines();
-          setSelectedMedicine(null);
-        } catch (e: any) {
-          Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
-        }
-      }},
-    ]);
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deleteMedicine(deleteConfirmId);
+      setDeleteConfirmId(null);
+      setSelectedMedicine(null);
+      await loadMedicines();
+    } catch (e: any) {
+      setDeleteConfirmId(null);
+      Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   function closeModal() {
@@ -468,6 +475,16 @@ export default function CabinetScreen() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
+
+      <ConfirmModal
+        visible={!!deleteConfirmId}
+        title="İlacı Sil"
+        message="Bu ilacı dolabından silmek istiyor musun?"
+        confirmLabel="Sil"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        loading={deleting}
+      />
 
       {/* Detail Modal */}
       <Modal visible={!!selectedMedicine} animationType="slide" presentationStyle="pageSheet">

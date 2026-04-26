@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
@@ -44,6 +44,8 @@ export default function PrescriptionScreen() {
   const [scannerTab, setScannerTab] = useState<"photo" | "manual">("photo");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [analysis, setAnalysis] = useState<PrescriptionAnalysis | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
@@ -212,22 +214,24 @@ export default function PrescriptionScreen() {
     }
   }
 
-  async function handleDelete(id: string) {
-    Alert.alert("Reçeteyi Sil", "Bu reçeteyi silmek istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      {
-        text: "Sil", style: "destructive",
-        onPress: async () => {
-          try {
-            await deletePrescription(id);
-            await loadPrescriptions();
-            setSelected(null);
-          } catch (e: any) {
-            Alert.alert("Hata", e?.message ?? "Reçete silinemedi.");
-          }
-        },
-      },
-    ]);
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      await deletePrescription(deleteConfirmId);
+      setDeleteConfirmId(null);
+      setSelected(null);
+      await loadPrescriptions();
+    } catch (e: any) {
+      setDeleteConfirmId(null);
+      Alert.alert("Hata", e?.message ?? "Reçete silinemedi.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function correctMedicineName() {
@@ -671,6 +675,16 @@ export default function PrescriptionScreen() {
           </SafeAreaView>
         )}
       </Modal>
+
+      <ConfirmModal
+        visible={!!deleteConfirmId}
+        title="Reçeteyi Sil"
+        message="Bu reçeteyi silmek istiyor musun?"
+        confirmLabel="Sil"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        loading={deleting}
+      />
     </SafeAreaView>
   );
 }

@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal } from "../../components/ui";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
@@ -41,6 +41,8 @@ export default function ActiveScreen() {
   const doseMapRef = useRef<Record<string, TakenDose[]>>({});
   const dismissedRef = useRef<Set<string>>(new Set());
 
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [skipModal, setSkipModal] = useState<{ medicineId: string; medicineName: string; scheduledTime: string } | null>(null);
   const [skipReason, setSkipReason] = useState("");
   const [skipCustom, setSkipCustom] = useState("");
@@ -140,20 +142,25 @@ export default function ActiveScreen() {
     } finally { setLoading(false); }
   }
 
-  async function handleDelete(id: string) {
-    Alert.alert("İlacı Kaldır", "Aktif ilaçlardan kaldırmak istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Kaldır", style: "destructive", onPress: async () => {
-        try {
-          const med = medicines.find((m) => m.id === id);
-          if (med?.notificationIds) await cancelReminders(med.notificationIds);
-          await deleteActiveMedicine(id);
-          await loadData();
-        } catch (e: any) {
-          Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
-        }
-      }},
-    ]);
+  function handleDelete(id: string) {
+    setDeleteConfirmId(id);
+  }
+
+  async function confirmDelete() {
+    if (!deleteConfirmId) return;
+    setDeleting(true);
+    try {
+      const med = medicines.find((m) => m.id === deleteConfirmId);
+      if (med?.notificationIds) await cancelReminders(med.notificationIds);
+      await deleteActiveMedicine(deleteConfirmId);
+      setDeleteConfirmId(null);
+      await loadData();
+    } catch (e: any) {
+      setDeleteConfirmId(null);
+      Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function handleTakeDose(activeMedicineId: string, scheduledTime: string) {
@@ -452,6 +459,16 @@ export default function ActiveScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      <ConfirmModal
+        visible={!!deleteConfirmId}
+        title="İlacı Kaldır"
+        message="Bu ilacı aktif ilaçlardan kaldırmak istiyor musun?"
+        confirmLabel="Kaldır"
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteConfirmId(null)}
+        loading={deleting}
+      />
     </SafeAreaView>
   );
 }

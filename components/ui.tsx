@@ -5,6 +5,7 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Modal,
   ActivityIndicator,
   ViewStyle,
   TextStyle,
@@ -367,4 +368,88 @@ const pickerStyles = StyleSheet.create({
   mealIcon: { fontSize: 20 },
   mealLabel: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, textAlign: "center" },
   mealLabelActive: { color: Colors.primary, fontWeight: "700" },
+});
+
+// ─── ConfirmModal ─────────────────────────────────────────────────────────────
+
+export function ConfirmModal({
+  visible,
+  title,
+  message,
+  confirmLabel = "Sil",
+  onConfirm,
+  onCancel,
+  loading,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  confirmLabel?: string;
+  onConfirm: () => void;
+  onCancel: () => void;
+  loading?: boolean;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onCancel}>
+      <View style={confirmStyles.overlay}>
+        <View style={confirmStyles.dialog}>
+          <Text style={confirmStyles.title}>{title}</Text>
+          <Text style={confirmStyles.message}>{message}</Text>
+          <View style={confirmStyles.buttons}>
+            <TouchableOpacity style={confirmStyles.cancelBtn} onPress={onCancel} activeOpacity={0.8}>
+              <Text style={confirmStyles.cancelText}>İptal</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[confirmStyles.deleteBtn, loading && { opacity: 0.6 }]}
+              onPress={onConfirm}
+              disabled={loading}
+              activeOpacity={0.8}
+            >
+              {loading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Text style={confirmStyles.deleteText}>{confirmLabel}</Text>}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const confirmStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32,
+  },
+  dialog: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.xl,
+    padding: 24,
+    width: "100%",
+    maxWidth: 340,
+    gap: 8,
+  },
+  title: { fontSize: 17, fontWeight: "700", color: Colors.text },
+  message: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  buttons: { flexDirection: "row", gap: 10, marginTop: 8 },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    alignItems: "center",
+  },
+  cancelText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
+  deleteBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.danger,
+    alignItems: "center",
+  },
+  deleteText: { fontSize: 14, fontWeight: "700", color: "#fff" },
 });
