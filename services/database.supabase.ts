@@ -113,8 +113,12 @@ export async function addMedicine(medicine: Medicine): Promise<void> {
 }
 
 export async function deleteMedicine(id: string): Promise<void> {
-  const { error } = await supabase.from("medicines").delete().eq("id", id);
+  const { error, count } = await supabase
+    .from("medicines")
+    .delete({ count: "exact" })
+    .eq("id", id);
   if (error) throw error;
+  if (!count) throw new Error("Silme işlemi başarısız. Supabase DELETE policy eksik olabilir.");
 }
 
 // ─── Active Medicines ────────────────────────────────────────────────────────
@@ -154,8 +158,12 @@ export async function addActiveMedicine(medicine: ActiveMedicine): Promise<void>
 export async function deleteActiveMedicine(id: string): Promise<void> {
   const { error } = await supabase.from("taken_doses").delete().eq("active_medicine_id", id);
   if (error) throw error;
-  const { error: e2 } = await supabase.from("active_medicines").delete().eq("id", id);
+  const { error: e2, count } = await supabase
+    .from("active_medicines")
+    .delete({ count: "exact" })
+    .eq("id", id);
   if (e2) throw e2;
+  if (!count) throw new Error("Silme işlemi başarısız. Supabase DELETE policy eksik olabilir.");
 }
 
 // ─── Taken Doses ─────────────────────────────────────────────────────────────
@@ -250,8 +258,12 @@ export async function savePrescription(prescription: SavedPrescription): Promise
 }
 
 export async function deletePrescription(id: string): Promise<void> {
-  const { error } = await supabase.from("prescriptions").delete().eq("id", id);
+  const { error, count } = await supabase
+    .from("prescriptions")
+    .delete({ count: "exact" })
+    .eq("id", id);
   if (error) throw error;
+  if (!count) throw new Error("Silme işlemi başarısız. Supabase DELETE policy eksik olabilir.");
 }
 
 // ─── Login Logs ──────────────────────────────────────────────────────────────
