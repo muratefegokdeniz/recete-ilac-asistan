@@ -13,6 +13,9 @@ function TabIcon({
   focused: boolean;
   color: string;
 }) {
+  if (Platform.OS === "web") {
+    return <MaterialIcons name={name} size={24} color={color} />;
+  }
   return (
     <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
       <MaterialIcons name={name} size={22} color={color} />
@@ -95,6 +98,7 @@ const tabScreens = (
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
   const showSidebar = Platform.OS === "web" && width >= 768;
+  const isMobileWeb = Platform.OS === "web" && width < 768;
 
   if (showSidebar) {
     return (
@@ -112,6 +116,24 @@ export default function TabsLayout() {
           </Tabs>
         </View>
       </View>
+    );
+  }
+
+  if (isMobileWeb) {
+    return (
+      <Tabs
+        initialRouteName="home"
+        screenOptions={{
+          headerShown: false,
+          tabBarStyle: styles.tabBarMobileWeb,
+          tabBarActiveTintColor: Colors.tabBarActive,
+          tabBarInactiveTintColor: Colors.tabBarInactive,
+          tabBarShowLabel: false,
+          tabBarPosition: "bottom",
+        }}
+      >
+        {tabScreens}
+      </Tabs>
     );
   }
 
@@ -149,6 +171,14 @@ const styles = StyleSheet.create({
     height: Platform.OS === "ios" ? 88 : 64,
     paddingBottom: Platform.OS === "ios" ? 24 : 8,
     paddingTop: 8,
+  },
+  tabBarMobileWeb: {
+    backgroundColor: Colors.tabBar,
+    borderTopColor: Colors.tabBarBorder,
+    borderTopWidth: 1,
+    height: 56,
+    paddingBottom: 4,
+    paddingTop: 4,
   },
   tabLabel: {
     fontSize: 11,
