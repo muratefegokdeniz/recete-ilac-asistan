@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,7 +22,7 @@ import { Button, EmptyState, FrequencyPicker, MealTimingPicker } from "../../com
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
 import { Medicine } from "../../types";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
 type ExpiryStatus = "ok" | "soon" | "expired";
 
@@ -83,11 +83,21 @@ export default function CabinetScreen() {
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [form, setForm] = useState<FormState>({});
 
+  const { openAdd } = useLocalSearchParams<{ openAdd?: string }>();
+
   useFocusEffect(
     useCallback(() => {
       loadMedicines();
     }, [])
   );
+
+  useEffect(() => {
+    if (openAdd === "1") {
+      setForm({});
+      setAiFilledFields(new Set());
+      setShowModal(true);
+    }
+  }, [openAdd]);
 
   async function loadMedicines() {
     try {

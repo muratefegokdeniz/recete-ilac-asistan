@@ -202,7 +202,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.headerBtn, styles.headerBtnPrimary]}
-            onPress={() => router.push("/(tabs)/cabinet" as any)}
+            onPress={() => router.push({ pathname: "/(tabs)/cabinet", params: { openAdd: "1" } } as any)}
           >
             <MaterialIcons name="add" size={16} color={Colors.textInverse} />
             <Text style={[styles.headerBtnText, { color: Colors.textInverse }]}>İlaç Ekle</Text>
