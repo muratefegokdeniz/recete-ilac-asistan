@@ -17,7 +17,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Card, Button, Badge, SectionHeader, EmptyState } from "../../components/ui";
-import { analyzePrescription, getMedicineInfoByName } from "../../services/anthropic";
+import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 
@@ -41,10 +41,17 @@ export default function PrescriptionScreen() {
   const [correctLoading, setCorrectLoading] = useState(false);
 
   // Scanner state
+  const [scannerTab, setScannerTab] = useState<"photo" | "manual">("photo");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [analysis, setAnalysis] = useState<PrescriptionAnalysis | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  // Manual entry state
+  const [manualDoctor, setManualDoctor] = useState("");
+  const [manualPatient, setManualPatient] = useState("");
+  const [manualDate, setManualDate] = useState("");
+  const [manualMeds, setManualMeds] = useState("");
 
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +69,42 @@ export default function PrescriptionScreen() {
     setAnalysis(null);
     setErrorMsg(null);
     setAddedToActive(false);
+    setScannerTab("photo");
+    setManualDoctor("");
+    setManualPatient("");
+    setManualDate("");
+    setManualMeds("");
     setShowScanner(true);
+  }
+
+  async function handleManualAnalyze() {
+    if (!manualMeds.trim()) {
+      Alert.alert("Eksik Bilgi", "En az ilaç adlarını yazmalısınız.");
+      return;
+    }
+    setLoading(true);
+    setErrorMsg(null);
+    setAnalysis(null);
+    try {
+      const lines: string[] = [];
+      if (manualDoctor.trim()) lines.push(`Doktor: ${manualDoctor.trim()}`);
+      if (manualPatient.trim()) lines.push(`Hasta: ${manualPatient.trim()}`);
+      if (manualDate.trim()) lines.push(`Tarih: ${manualDate.trim()}`);
+      lines.push(`\nİlaçlar:\n${manualMeds.trim()}`);
+      const result = await analyzePrescriptionText(lines.join("\n"));
+      setAnalysis(result);
+      const saved: SavedPrescription = {
+        id: Date.now().toString(),
+        analysis: result,
+        savedAt: new Date().toISOString(),
+      };
+      await savePrescription(saved);
+      await loadPrescriptions();
+    } catch (err: any) {
+      setErrorMsg(err?.message ?? "Analiz sırasında bir hata oluştu.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   function openTimeModal(a: PrescriptionAnalysis) {
@@ -370,80 +412,160 @@ export default function PrescriptionScreen() {
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
-          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false}>
-            {!imageUri ? (
-              <View style={styles.uploadArea}>
-                <View style={styles.uploadIconCircle}>
-                  <Ionicons name="camera" size={40} color={Colors.primary} />
-                </View>
-                <Text style={styles.uploadTitle}>Reçetenizi Ekleyin</Text>
-                <Text style={styles.uploadDescription}>
-                  Reçetenizi fotoğraflayın veya galeriden seçin. AI tüm ilaçları otomatik analiz edecek.
-                </Text>
-                <View style={styles.uploadButtons}>
-                  <Button title="Fotoğraf Çek" onPress={() => pickImage(true)} variant="primary"
-                    icon={<Ionicons name="camera" size={16} color="white" />} size="lg" style={{ width: "100%" }} />
-                  <Button title="Galeriden Seç" onPress={() => pickImage(false)} variant="outline"
-                    icon={<Ionicons name="images" size={16} color={Colors.primary} />} size="lg" style={{ width: "100%" }} />
-                </View>
-              </View>
-            ) : (
-              <View>
-                <View style={styles.previewContainer}>
-                  <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="contain" />
-                  {!loading && !analysis && (
-                    <TouchableOpacity style={styles.changePhoto} onPress={() => { setImageUri(null); setErrorMsg(null); }}>
-                      <Ionicons name="close-circle" size={28} color={Colors.danger} />
-                    </TouchableOpacity>
-                  )}
-                </View>
 
-                {loading && (
-                  <View style={styles.loadingCard}>
-                    <ActivityIndicator size="large" color={Colors.primary} />
-                    <Text style={styles.loadingText}>Reçete analiz ediliyor...</Text>
-                    <Text style={styles.loadingSubtext}>Bu birkaç saniye sürebilir</Text>
+          {/* Tab switcher */}
+          {!analysis && (
+            <View style={styles.scannerTabBar}>
+              <TouchableOpacity
+                style={[styles.scannerTab, scannerTab === "photo" && styles.scannerTabActive]}
+                onPress={() => { setScannerTab("photo"); setAnalysis(null); setErrorMsg(null); setImageUri(null); }}
+              >
+                <Ionicons name="camera" size={16} color={scannerTab === "photo" ? Colors.primary : Colors.textMuted} />
+                <Text style={[styles.scannerTabText, scannerTab === "photo" && styles.scannerTabTextActive]}>
+                  Fotoğraf
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.scannerTab, scannerTab === "manual" && styles.scannerTabActive]}
+                onPress={() => { setScannerTab("manual"); setAnalysis(null); setErrorMsg(null); setImageUri(null); }}
+              >
+                <Ionicons name="create" size={16} color={scannerTab === "manual" ? Colors.primary : Colors.textMuted} />
+                <Text style={[styles.scannerTabText, scannerTab === "manual" && styles.scannerTabTextActive]}>
+                  Manuel Giriş
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+
+            {/* ── PHOTO TAB ── */}
+            {scannerTab === "photo" && (
+              <>
+                {!imageUri ? (
+                  <View style={styles.uploadArea}>
+                    <View style={styles.uploadIconCircle}>
+                      <Ionicons name="camera" size={40} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.uploadTitle}>Reçetenizi Ekleyin</Text>
+                    <Text style={styles.uploadDescription}>
+                      Reçetenizi fotoğraflayın veya galeriden seçin. AI tüm ilaçları otomatik analiz edecek.
+                    </Text>
+                    <View style={styles.uploadButtons}>
+                      <Button title="Fotoğraf Çek" onPress={() => pickImage(true)} variant="primary"
+                        icon={<Ionicons name="camera" size={16} color="white" />} size="lg" style={{ width: "100%" }} />
+                      <Button title="Galeriden Seç" onPress={() => pickImage(false)} variant="outline"
+                        icon={<Ionicons name="images" size={16} color={Colors.primary} />} size="lg" style={{ width: "100%" }} />
+                    </View>
+                  </View>
+                ) : (
+                  <View>
+                    <View style={styles.previewContainer}>
+                      <Image source={{ uri: imageUri }} style={styles.preview} resizeMode="contain" />
+                      {!loading && !analysis && (
+                        <TouchableOpacity style={styles.changePhoto} onPress={() => { setImageUri(null); setErrorMsg(null); }}>
+                          <Ionicons name="close-circle" size={28} color={Colors.danger} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {loading && (
+                      <View style={styles.loadingCard}>
+                        <ActivityIndicator size="large" color={Colors.primary} />
+                        <Text style={styles.loadingText}>Reçete analiz ediliyor...</Text>
+                        <Text style={styles.loadingSubtext}>Bu birkaç saniye sürebilir</Text>
+                      </View>
+                    )}
+                    {errorMsg && !loading && (
+                      <View style={styles.errorCard}>
+                        <Ionicons name="alert-circle" size={20} color={Colors.danger} />
+                        <Text style={styles.errorText}>{errorMsg}</Text>
+                      </View>
+                    )}
+                    {analysis && !loading && <AnalysisResult analysis={analysis} onClose={() => setShowScanner(false)} addedToActive={addedToActive} onAddToActive={() => openTimeModal(analysis)} />}
                   </View>
                 )}
+              </>
+            )}
 
-                {errorMsg && !loading && (
+            {/* ── MANUAL TAB ── */}
+            {scannerTab === "manual" && !analysis && (
+              <View style={styles.manualForm}>
+                <View style={styles.manualInfoBox}>
+                  <Ionicons name="information-circle" size={16} color={Colors.primary} />
+                  <Text style={styles.manualInfoText}>
+                    İlaç adlarını yazın, AI doz, kullanım ve yan etki bilgilerini otomatik tamamlayacak.
+                  </Text>
+                </View>
+
+                <View style={styles.manualRow}>
+                  <View style={styles.manualField}>
+                    <Text style={styles.manualLabel}>Doktor Adı</Text>
+                    <TextInput style={styles.manualInput} value={manualDoctor} onChangeText={setManualDoctor}
+                      placeholder="Dr. Ahmet Yılmaz" placeholderTextColor={Colors.textMuted} />
+                  </View>
+                  <View style={styles.manualField}>
+                    <Text style={styles.manualLabel}>Hasta Adı</Text>
+                    <TextInput style={styles.manualInput} value={manualPatient} onChangeText={setManualPatient}
+                      placeholder="Ad Soyad" placeholderTextColor={Colors.textMuted} />
+                  </View>
+                </View>
+
+                <View style={styles.manualField}>
+                  <Text style={styles.manualLabel}>Reçete Tarihi</Text>
+                  <TextInput style={styles.manualInput} value={manualDate} onChangeText={setManualDate}
+                    placeholder="26.04.2025" placeholderTextColor={Colors.textMuted} />
+                </View>
+
+                <View style={styles.manualField}>
+                  <Text style={styles.manualLabel}>İlaçlar *</Text>
+                  <Text style={styles.manualHint}>
+                    Her satıra bir ilaç yazın. Doz ve süre bilgisi ekleyebilirsiniz.
+                  </Text>
+                  <TextInput
+                    style={styles.manualMedsInput}
+                    value={manualMeds}
+                    onChangeText={setManualMeds}
+                    placeholder={"Amoksisilin 500mg, günde 3 kez, 7 gün\nParol 500mg\nVitamin D3 1000 IU"}
+                    placeholderTextColor={Colors.textMuted}
+                    multiline
+                    numberOfLines={6}
+                    textAlignVertical="top"
+                  />
+                </View>
+
+                {errorMsg && (
                   <View style={styles.errorCard}>
                     <Ionicons name="alert-circle" size={20} color={Colors.danger} />
                     <Text style={styles.errorText}>{errorMsg}</Text>
                   </View>
                 )}
 
-                {analysis && !loading && (
-                  <View>
-                    <View style={styles.successBanner}>
-                      <Ionicons name="checkmark-circle" size={18} color={Colors.secondary} />
-                      <Text style={styles.successText}>Reçete kaydedildi!</Text>
-                      <Button title="Kapat" onPress={() => setShowScanner(false)} variant="secondary" size="sm" />
-                    </View>
-
-                    <PrescriptionDetail analysis={analysis} />
-
-                    {addedToActive ? (
-                      <View style={styles.addedToActiveBanner}>
-                        <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
-                        <Text style={styles.addedToActiveText}>
-                          {analysis.medicines.length} ilaç aktif ilaçlara eklendi!
-                        </Text>
-                      </View>
-                    ) : (
-                      <TouchableOpacity
-                        style={styles.addToActiveBtn}
-                        onPress={() => openTimeModal(analysis)}
-                        activeOpacity={0.8}
-                      >
-                        <Ionicons name="add-circle" size={18} color={Colors.textInverse} />
-                        <Text style={styles.addToActiveBtnText}>İlaçları Aktif İlaçlara Ekle</Text>
-                      </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+                <TouchableOpacity
+                  style={[styles.analyzeBtn, loading && { opacity: 0.6 }]}
+                  onPress={handleManualAnalyze}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  {loading ? (
+                    <>
+                      <ActivityIndicator size="small" color={Colors.textInverse} />
+                      <Text style={styles.analyzeBtnText}>AI Analiz Ediyor...</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Ionicons name="sparkles" size={18} color={Colors.textInverse} />
+                      <Text style={styles.analyzeBtnText}>AI ile Analiz Et</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
             )}
+
+            {/* Shared analysis result (manual tab after analysis) */}
+            {scannerTab === "manual" && analysis && !loading && (
+              <AnalysisResult analysis={analysis} onClose={() => setShowScanner(false)} addedToActive={addedToActive} onAddToActive={() => openTimeModal(analysis)} />
+            )}
+
           </ScrollView>
         </SafeAreaView>
       </Modal>
@@ -538,6 +660,37 @@ export default function PrescriptionScreen() {
         )}
       </Modal>
     </SafeAreaView>
+  );
+}
+
+function AnalysisResult({ analysis, onClose, addedToActive, onAddToActive }: {
+  analysis: PrescriptionAnalysis;
+  onClose: () => void;
+  addedToActive: boolean;
+  onAddToActive: () => void;
+}) {
+  return (
+    <View>
+      <View style={styles.successBanner}>
+        <Ionicons name="checkmark-circle" size={18} color={Colors.secondary} />
+        <Text style={styles.successText}>Reçete kaydedildi!</Text>
+        <Button title="Kapat" onPress={onClose} variant="secondary" size="sm" />
+      </View>
+      <PrescriptionDetail analysis={analysis} />
+      {addedToActive ? (
+        <View style={styles.addedToActiveBanner}>
+          <Ionicons name="checkmark-circle" size={16} color={Colors.primary} />
+          <Text style={styles.addedToActiveText}>
+            {analysis.medicines.length} ilaç aktif ilaçlara eklendi!
+          </Text>
+        </View>
+      ) : (
+        <TouchableOpacity style={styles.addToActiveBtn} onPress={onAddToActive} activeOpacity={0.8}>
+          <Ionicons name="add-circle" size={18} color={Colors.textInverse} />
+          <Text style={styles.addToActiveBtnText}>İlaçları Aktif İlaçlara Ekle</Text>
+        </TouchableOpacity>
+      )}
+    </View>
   );
 }
 
@@ -842,6 +995,51 @@ const styles = StyleSheet.create({
     padding: 12, marginBottom: 12,
   },
   addedToActiveText: { fontSize: 14, color: Colors.primary, fontWeight: "600" },
+
+  scannerTabBar: {
+    flexDirection: "row", marginHorizontal: 16, marginTop: 12, marginBottom: 4,
+    backgroundColor: Colors.surfaceAlt, borderRadius: Radius.lg, padding: 4,
+  },
+  scannerTab: {
+    flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center",
+    gap: 6, paddingVertical: 10, borderRadius: Radius.md,
+  },
+  scannerTabActive: {
+    backgroundColor: Colors.surface,
+    shadowColor: Colors.text, shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08, shadowRadius: 3, elevation: 2,
+  },
+  scannerTabText: { fontSize: 13, fontWeight: "500", color: Colors.textMuted },
+  scannerTabTextActive: { color: Colors.primary, fontWeight: "700" },
+
+  manualForm: { gap: 14 },
+  manualInfoBox: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: Colors.primaryLight, padding: 12, borderRadius: Radius.md,
+    borderWidth: 1, borderColor: Colors.primary + "30",
+  },
+  manualInfoText: { flex: 1, fontSize: 13, color: Colors.primaryDark, lineHeight: 18 },
+  manualRow: { flexDirection: "row", gap: 10 },
+  manualField: { flex: 1, gap: 5 },
+  manualLabel: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  manualHint: { fontSize: 12, color: Colors.textMuted, marginBottom: 2 },
+  manualInput: {
+    borderWidth: 1, borderColor: Colors.border, borderRadius: Radius.md,
+    paddingHorizontal: 12, paddingVertical: 10, fontSize: 14,
+    color: Colors.text, backgroundColor: Colors.surface,
+  },
+  manualMedsInput: {
+    borderWidth: 1.5, borderColor: Colors.primary + "60", borderRadius: Radius.md,
+    paddingHorizontal: 12, paddingTop: 12, paddingBottom: 12,
+    fontSize: 14, color: Colors.text, backgroundColor: Colors.surface,
+    minHeight: 130, textAlignVertical: "top",
+  },
+  analyzeBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: Colors.primary, borderRadius: Radius.lg,
+    paddingVertical: 15, marginTop: 4,
+  },
+  analyzeBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
 
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,

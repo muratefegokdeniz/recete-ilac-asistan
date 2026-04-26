@@ -90,6 +90,60 @@ export interface MedicineImageAnalysis {
   activeIngredient?: string;
 }
 
+export async function analyzePrescriptionText(
+  text: string
+): Promise<PrescriptionAnalysis> {
+  const response = await client.messages.create({
+    model: "claude-sonnet-4-6",
+    max_tokens: 2048,
+    system: `Sen bir eczacı asistanısın. Kullanıcının yazdığı reçete metnini analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
+Yanıtını her zaman geçerli bir JSON formatında ver.`,
+    messages: [
+      {
+        role: "user",
+        content: `Aşağıdaki reçete bilgilerini analiz et ve eksik alanları tıbbi bilginle tamamla. JSON formatında yanıt ver:
+
+${text}
+
+Yanıtını şu JSON formatında ver (Türkçe):
+{
+  "doctorName": "Doktor adı (yoksa null)",
+  "patientName": "Hasta adı (yoksa null)",
+  "date": "Tarih (yoksa null)",
+  "rawText": "Girilen metin",
+  "medicines": [
+    {
+      "name": "İlaç adı ve formu",
+      "dosage": "Tek seferde alınacak doz",
+      "frequency": "Günde kaç kez",
+      "duration": "Kaç gün kullanılacak",
+      "instructions": "Ne zaman alınacak (sabah/öğle/akşam, aç/tok karnına)",
+      "purpose": "Bu ilaç ne için kullanılır (2-3 cümle)",
+      "sideEffects": "En önemli yan etkiler"
+    }
+  ]
+}
+
+Kullanıcının yazdığı ilaç adlarını birebir koru, sadece eksik bilgileri tamamla.`,
+      },
+    ],
+  });
+
+  const text2 =
+    response.content[0].type === "text" ? response.content[0].text : "";
+
+  try {
+    const jsonMatch = text2.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      return JSON.parse(jsonMatch[0]) as PrescriptionAnalysis;
+    }
+  } catch {
+    // ignore parse error
+  }
+
+  return { medicines: [], rawText: text };
+}
+
 export async function analyzeMedicineImage(
   base64Image: string,
   mimeType: string = "image/jpeg"
