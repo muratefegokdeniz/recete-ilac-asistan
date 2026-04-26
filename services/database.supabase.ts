@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Medicine, ActiveMedicine, TakenDose, SavedPrescription } from "../types";
+import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage } from "../types";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -264,6 +264,53 @@ export async function deletePrescription(id: string): Promise<void> {
     .eq("id", id);
   if (error) throw error;
   if (!count) throw new Error("Silme işlemi başarısız. Supabase DELETE policy eksik olabilir.");
+}
+
+// ─── Chat History ────────────────────────────────────────────────────────────
+
+export interface ChatConversation {
+  id: string;
+  title: string;
+  messages: ChatMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getChatConversations(): Promise<ChatConversation[]> {
+  const userId = await getUserId();
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("chat_conversations")
+    .select("*")
+    .eq("user_id", userId)
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    title: r.title,
+    messages: r.messages ?? [],
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }));
+}
+
+export async function upsertChatConversation(conv: ChatConversation): Promise<void> {
+  const userId = await getUserId();
+  if (!userId) return;
+  const { error } = await supabase.from("chat_conversations").upsert({
+    id: conv.id,
+    user_id: userId,
+    title: conv.title,
+    messages: conv.messages,
+    created_at: conv.createdAt,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) throw error;
+}
+
+export async function deleteChatConversation(id: string): Promise<void> {
+  const { error } = await supabase.from("chat_conversations").delete().eq("id", id);
+  if (error) throw error;
 }
 
 // ─── Login Logs ──────────────────────────────────────────────────────────────
