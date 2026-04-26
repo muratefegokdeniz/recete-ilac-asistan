@@ -324,7 +324,10 @@ export default function CabinetScreen() {
                         <Image source={{ uri: med.imageUri }} style={styles.cardImgFill} resizeMode="cover" />
                       ) : (
                         <View style={styles.cardImgPlaceholder}>
-                          <MaterialIcons name="medication" size={32} color={Colors.primary} />
+                          <View style={styles.placeholderIconCircle}>
+                            <MaterialIcons name="medication" size={36} color={Colors.primary} />
+                          </View>
+                          <Text style={styles.placeholderText}>İlaç</Text>
                         </View>
                       )}
                       {/* Status badge */}
@@ -487,8 +490,16 @@ export default function CabinetScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {selectedMedicine.imageUri && (
+              {selectedMedicine.imageUri ? (
                 <Image source={{ uri: selectedMedicine.imageUri }} style={styles.detailImage} resizeMode="cover" />
+              ) : (
+                <View style={styles.detailImagePlaceholder}>
+                  <View style={styles.detailPlaceholderIconCircle}>
+                    <MaterialIcons name="medication" size={56} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.detailPlaceholderLabel}>{selectedMedicine.name}</Text>
+                  <Text style={styles.detailPlaceholderSub}>İlaç görseli eklenmemiş</Text>
+                </View>
               )}
               <DetailRow label="Doz" value={selectedMedicine.dosage} />
               <DetailRow label="Sıklık" value={selectedMedicine.frequency} />
@@ -708,6 +719,26 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: Colors.primaryLight,
+    gap: 4,
+  },
+  placeholderIconCircle: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
+  },
+  placeholderText: {
+    fontSize: 11,
+    color: Colors.textMuted,
+    fontWeight: "500",
+    letterSpacing: 0.3,
   },
   statusBadge: {
     position: "absolute",
@@ -867,6 +898,39 @@ const styles = StyleSheet.create({
   formInputDisabled: { opacity: 0.6 },
 
   detailImage: { width: "100%", height: 180, borderRadius: Radius.lg, marginBottom: 8 },
+  detailImagePlaceholder: {
+    width: "100%",
+    height: 180,
+    borderRadius: Radius.lg,
+    marginBottom: 8,
+    backgroundColor: Colors.primaryLight,
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  detailPlaceholderIconCircle: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    backgroundColor: Colors.surface,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
+  },
+  detailPlaceholderLabel: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: Colors.text,
+    marginTop: 2,
+  },
+  detailPlaceholderSub: {
+    fontSize: 12,
+    color: Colors.textMuted,
+  },
   detailRow: { backgroundColor: Colors.surfaceAlt, padding: 12, borderRadius: Radius.md, gap: 4, marginBottom: 4 },
   detailRowWarn: { backgroundColor: Colors.warningLight },
   detailLabel: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },
