@@ -1,5 +1,6 @@
-import React from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Alert } from "react-native";
+import React, { useState } from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
+import { ConfirmModal } from "./ui";
 import { usePathname, useRouter } from "expo-router";
 import { MaterialIcons } from "@expo/vector-icons";
 import { Colors, Radius } from "../constants/Colors";
@@ -23,16 +24,14 @@ export default function WebSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { signOut } = useAuth();
+  const [showConfirm, setShowConfirm] = useState(false);
 
   function isActive(route: string) {
     return pathname.includes(route.replace("/(tabs)", ""));
   }
 
   function handleSignOut() {
-    Alert.alert("Çıkış Yap", "Hesabından çıkmak istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Çıkış Yap", style: "destructive", onPress: signOut },
-    ]);
+    setShowConfirm(true);
   }
 
   return (
@@ -74,6 +73,14 @@ export default function WebSidebar() {
         <MaterialIcons name="logout" size={18} color={Colors.danger} />
         <Text style={styles.signOutText}>Çıkış Yap</Text>
       </TouchableOpacity>
+      <ConfirmModal
+        visible={showConfirm}
+        title="Çıkış Yap"
+        message="Hesabından çıkmak istiyor musun?"
+        confirmLabel="Çıkış Yap"
+        onConfirm={() => { setShowConfirm(false); signOut(); }}
+        onCancel={() => setShowConfirm(false)}
+      />
     </View>
   );
 }
