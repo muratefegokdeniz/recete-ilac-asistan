@@ -1,13 +1,13 @@
 import React, { useState, useCallback } from "react";
 import {
-  View, Text, StyleSheet, TouchableOpacity, Alert,
+  View, Text, StyleSheet, TouchableOpacity,
   ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius } from "../../constants/Colors";
-import { Button } from "../../components/ui";
+import { Button, ConfirmModal } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
 import { getProfile, saveProfile, UserProfile } from "../../services/database";
 
@@ -21,6 +21,7 @@ export default function ProfileScreen() {
   const [draft, setDraft] = useState<UserProfile>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -50,10 +51,7 @@ export default function ProfileScreen() {
   }
 
   function handleSignOut() {
-    Alert.alert("Çıkış Yap", "Hesabından çıkmak istiyor musun?", [
-      { text: "İptal", style: "cancel" },
-      { text: "Çıkış Yap", style: "destructive", onPress: signOut },
-    ]);
+    setShowSignOutConfirm(true);
   }
 
   return (
@@ -200,6 +198,14 @@ export default function ProfileScreen() {
           </KeyboardAvoidingView>
         </SafeAreaView>
       </Modal>
+      <ConfirmModal
+        visible={showSignOutConfirm}
+        title="Çıkış Yap"
+        message="Hesabından çıkmak istiyor musun?"
+        confirmLabel="Çıkış Yap"
+        onConfirm={() => { setShowSignOutConfirm(false); signOut(); }}
+        onCancel={() => setShowSignOutConfirm(false)}
+      />
     </SafeAreaView>
   );
 }
