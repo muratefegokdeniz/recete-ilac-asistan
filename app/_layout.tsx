@@ -24,7 +24,7 @@ function RootNavigator() {
     if (!session && !inAuthGroup) {
       router.replace("/login");
     } else if (session && inAuthGroup) {
-      router.replace("/(tabs)");
+      router.replace("/(tabs)/home");
     }
   }, [session, loading, segments]);
 
