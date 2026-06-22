@@ -51,6 +51,7 @@ export default function ActiveScreen() {
   const [skipAdvice, setSkipAdvice] = useState<string | null>(null);
   const [skipLoading, setSkipLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string>("Ben");
+  const [customChildren, setCustomChildren] = useState<string[]>([]);
   const [newChildName, setNewChildName] = useState("");
   const [showAddChild, setShowAddChild] = useState(false);
   const [form, setForm] = useState({
@@ -213,11 +214,10 @@ export default function ActiveScreen() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // Tüm benzersiz çocuk isimlerini çıkar
-  const childNames = Array.from(new Set(
-    medicines.filter((m) => m.memberName).map((m) => m.memberName!)
-  ));
-  const members = ["Ben", ...childNames];
+  // İlaçlardan gelen + manuel eklenen çocuk isimleri (tekrarsız)
+  const childNamesFromMeds = medicines.filter((m) => m.memberName).map((m) => m.memberName!);
+  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]));
+  const members = ["Ben", ...allChildren];
 
   // Seçili üyeye göre filtrele
   const filteredMedicines = medicines.filter((m) =>
@@ -275,7 +275,10 @@ export default function ActiveScreen() {
               style={styles.addChildConfirm}
               onPress={() => {
                 const name = newChildName.trim();
-                if (name && !members.includes(name)) {
+                if (name) {
+                  if (!members.includes(name)) {
+                    setCustomChildren((prev) => [...prev, name]);
+                  }
                   setSelectedMember(name);
                 }
                 setNewChildName("");
