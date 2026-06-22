@@ -32,7 +32,9 @@
         "CAMERA",
         "READ_EXTERNAL_STORAGE",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "POST_NOTIFICATIONS",
+        "SCHEDULE_EXACT_ALARM"
       ]
     },
     "web": {
@@ -55,7 +57,8 @@
           "photosPermission": "Galerinizden ilaç fotoğrafı seçmek için erişim gerekiyor.",
           "cameraPermission": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor."
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ]
   }
 }

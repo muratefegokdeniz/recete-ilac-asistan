@@ -39,6 +39,7 @@ function rowToActiveMedicine(r: any): ActiveMedicine {
     notificationIds: r.notification_ids ?? undefined,
     notes: r.notes ?? undefined,
     takenDoses: [],
+    memberName: r.member_name ?? undefined,
   };
 }
 
@@ -151,6 +152,7 @@ export async function addActiveMedicine(medicine: ActiveMedicine): Promise<void>
     reminder_times: medicine.reminderTimes,
     notification_ids: medicine.notificationIds ?? null,
     notes: medicine.notes ?? null,
+    member_name: medicine.memberName ?? null,
   });
   if (error) throw error;
 }

@@ -26,6 +26,7 @@ export interface ActiveMedicine {
   notificationIds?: string[];
   notes?: string;
   takenDoses: TakenDose[];
+  memberName?: string; // undefined = kullanıcının kendisi ("Ben")
 }
 
 export interface TakenDose {

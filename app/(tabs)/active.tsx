@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useRef } from "react";
 import {
-  View, Text, ScrollView, StyleSheet, Modal, Alert,
+  View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
   Platform, Image, useWindowDimensions,
 } from "react-native";
@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
@@ -43,15 +43,21 @@ export default function ActiveScreen() {
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [skipModal, setSkipModal] = useState<{ medicineId: string; medicineName: string; scheduledTime: string } | null>(null);
   const [skipReason, setSkipReason] = useState("");
   const [skipCustom, setSkipCustom] = useState("");
+  const [skipReasonError, setSkipReasonError] = useState<string | null>(null);
   const [skipAdvice, setSkipAdvice] = useState<string | null>(null);
   const [skipLoading, setSkipLoading] = useState(false);
+  const [selectedMember, setSelectedMember] = useState<string>("Ben");
+  const [newChildName, setNewChildName] = useState("");
+  const [showAddChild, setShowAddChild] = useState(false);
   const [form, setForm] = useState({
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
     endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "",
+    memberName: "",
   });
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -134,6 +140,7 @@ export default function ActiveScreen() {
         endDate: form.endDate || undefined, reminderTimes: validTimes,
         notificationIds: notifIds.length > 0 ? notifIds : undefined,
         notes: form.notes || undefined, takenDoses: [],
+        memberName: form.memberName || undefined,
       };
       await addActiveMedicine(med);
       await loadData();
@@ -151,6 +158,7 @@ export default function ActiveScreen() {
   async function confirmDelete() {
     if (!deleteConfirmId) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
       const med = medicines.find((m) => m.id === deleteConfirmId);
       if (med?.notificationIds) await cancelReminders(med.notificationIds);
@@ -158,8 +166,7 @@ export default function ActiveScreen() {
       setDeleteConfirmId(null);
       await loadData();
     } catch (e: any) {
-      setDeleteConfirmId(null);
-      Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+      setDeleteError(e?.message ?? "İlaç silinemedi. Lütfen tekrar deneyin.");
     } finally {
       setDeleting(false);
     }
@@ -172,7 +179,7 @@ export default function ActiveScreen() {
     try {
       await markDoseTaken({ id: `${activeMedicineId}_${scheduledTime}`, scheduledTime, takenAt: new Date().toISOString() }, activeMedicineId);
       await loadData();
-    } catch (e: any) { Alert.alert("Hata", e?.message ?? "Kaydedilemedi."); }
+    } catch (e: any) { console.error("Doz kaydedilemedi:", e); }
   }
 
   function handleSkipDose(activeMedicineId: string, scheduledTime: string) {
@@ -180,18 +187,19 @@ export default function ActiveScreen() {
     const time = scheduledTime.split("T")[1]?.slice(0, 5) ?? scheduledTime;
     dismissedRef.current.add(`${activeMedicineId}_${time}`);
     setDueReminders((prev) => prev.filter((r) => !(r.medicineId === activeMedicineId && r.time === time)));
-    setSkipReason(""); setSkipCustom(""); setSkipAdvice(null);
+    setSkipReason(""); setSkipCustom(""); setSkipAdvice(null); setSkipReasonError(null);
     setSkipModal({ medicineId: activeMedicineId, medicineName: med?.medicineName ?? "İlaç", scheduledTime });
   }
 
   async function confirmSkip() {
     if (!skipModal) return;
     const reason = skipReason === "Diğer" ? skipCustom : skipReason;
-    if (!reason.trim()) { Alert.alert("Lütfen bir neden seç."); return; }
+    if (!reason.trim()) { setSkipReasonError("Lütfen bir neden seçin."); return; }
+    setSkipReasonError(null);
     try {
       await skipDose({ id: `${skipModal.medicineId}_${skipModal.scheduledTime}`, scheduledTime: skipModal.scheduledTime }, skipModal.medicineId);
       loadData();
-    } catch (e: any) { Alert.alert("Hata", e?.message ?? "Kaydedilemedi."); }
+    } catch (e: any) { console.error("Doz atlanamadı:", e); }
     setSkipLoading(true); setSkipAdvice(null);
     try { setSkipAdvice(await getSkipAdvice(skipModal.medicineName, reason)); }
     catch { setSkipAdvice("Şu an öneri alınamadı."); }
@@ -199,13 +207,28 @@ export default function ActiveScreen() {
   }
 
   function resetForm() {
-    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "" });
+    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "", memberName: selectedMember === "Ben" ? "" : selectedMember });
     setAddError(null);
   }
 
   const today = new Date().toISOString().split("T")[0];
-  const totalDoses = medicines.reduce((s, m) => s + m.reminderTimes.length, 0);
-  const takenToday = Object.values(todayDoseMap).flat().filter((d) => d.takenAt).length;
+
+  // Tüm benzersiz çocuk isimlerini çıkar
+  const childNames = Array.from(new Set(
+    medicines.filter((m) => m.memberName).map((m) => m.memberName!)
+  ));
+  const members = ["Ben", ...childNames];
+
+  // Seçili üyeye göre filtrele
+  const filteredMedicines = medicines.filter((m) =>
+    selectedMember === "Ben" ? !m.memberName : m.memberName === selectedMember
+  );
+
+  const totalDoses = filteredMedicines.reduce((s, m) => s + m.reminderTimes.length, 0);
+  const takenToday = filteredMedicines
+    .map((m) => todayDoseMap[m.id] ?? [])
+    .flat()
+    .filter((d) => d.takenAt).length;
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -221,11 +244,64 @@ export default function ActiveScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Üye sekme çubuğu */}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberBar} contentContainerStyle={styles.memberBarContent}>
+        {members.map((name) => (
+          <TouchableOpacity
+            key={name}
+            style={[styles.memberTab, selectedMember === name && styles.memberTabActive]}
+            onPress={() => setSelectedMember(name)}
+            activeOpacity={0.75}
+          >
+            <Text style={[styles.memberTabText, selectedMember === name && styles.memberTabTextActive]}>
+              {name}
+            </Text>
+          </TouchableOpacity>
+        ))}
+        {/* Çocuk ekle butonu */}
+        {showAddChild ? (
+          <View style={styles.addChildRow}>
+            <TextInput
+              style={styles.addChildInput}
+              value={newChildName}
+              onChangeText={setNewChildName}
+              placeholder="Çocuk adı..."
+              placeholderTextColor={Colors.textMuted}
+              autoFocus
+              maxLength={20}
+            />
+            <TouchableOpacity
+              style={styles.addChildConfirm}
+              onPress={() => {
+                const name = newChildName.trim();
+                if (name && !members.includes(name)) {
+                  setSelectedMember(name);
+                }
+                setNewChildName("");
+                setShowAddChild(false);
+              }}
+            >
+              <MaterialIcons name="check" size={16} color={Colors.textInverse} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => { setShowAddChild(false); setNewChildName(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <MaterialIcons name="close" size={18} color={Colors.textMuted} />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
+            <MaterialIcons name="add" size={16} color={Colors.primary} />
+            <Text style={styles.addChildBtnText}>Çocuk Ekle</Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+
       {/* Progress strip */}
-      {medicines.length > 0 && (
+      {filteredMedicines.length > 0 && (
         <View style={styles.progressStrip}>
           <View style={styles.progressInfo}>
-            <Text style={styles.progressLabel}>Bugünkü ilerleme</Text>
+            <Text style={styles.progressLabel}>
+              {selectedMember === "Ben" ? "Bugünkü ilerleme" : `${selectedMember} - Bugünkü ilerleme`}
+            </Text>
             <Text style={styles.progressCount}>{takenToday}/{totalDoses} doz</Text>
           </View>
           <View style={styles.progressBarBg}>
@@ -260,16 +336,16 @@ export default function ActiveScreen() {
           </View>
         ))}
 
-        {medicines.length === 0 ? (
+        {filteredMedicines.length === 0 ? (
           <EmptyState
             icon={<MaterialIcons name="alarm" size={36} color={Colors.textMuted} />}
-            title="Aktif İlaç Yok"
-            description="Düzenli kullandığın ilaçları ekleyerek doz takibi yapabilirsin."
+            title={selectedMember === "Ben" ? "Aktif İlaç Yok" : `${selectedMember} için İlaç Yok`}
+            description={selectedMember === "Ben" ? "Düzenli kullandığın ilaçları ekleyerek doz takibi yapabilirsin." : `${selectedMember} için ilaç eklemek için "Ekle" butonuna bas.`}
             action={{ label: "İlaç Ekle", onPress: openModal }}
           />
         ) : (
           <>
-            {medicines.map((med) => (
+            {filteredMedicines.map((med) => (
               <ActiveMedicineCard
                 key={med.id}
                 medicine={med}
@@ -329,6 +405,25 @@ export default function ActiveScreen() {
             ) : (
               <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
 
+                {/* Üye seçici */}
+                <View style={styles.memberPickerSection}>
+                  <Text style={styles.memberPickerLabel}>Bu kimin için?</Text>
+                  <View style={styles.memberPickerRow}>
+                    {members.map((name) => (
+                      <TouchableOpacity
+                        key={name}
+                        style={[styles.memberPickerChip, form.memberName === (name === "Ben" ? "" : name) && styles.memberPickerChipActive]}
+                        onPress={() => setForm((f) => ({ ...f, memberName: name === "Ben" ? "" : name }))}
+                        activeOpacity={0.75}
+                      >
+                        <Text style={[styles.memberPickerChipText, form.memberName === (name === "Ben" ? "" : name) && styles.memberPickerChipTextActive]}>
+                          {name}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
                 {form.fromCabinetId ? (
                   <View style={styles.fromCabinetBanner}>
                     <MaterialIcons name="check-circle" size={18} color={Colors.primary} />
@@ -369,21 +464,17 @@ export default function ActiveScreen() {
                           <Text style={styles.formLabel}>Hatırlatma Saatleri</Text>
                         </View>
                         {form.reminderTimes.map((t, idx) => (
-                          <View key={idx} style={styles.timeRow}>
-                            <MaterialIcons name="alarm" size={16} color={Colors.primary} />
-                            <TextInput
-                              style={styles.timeInput}
-                              value={t}
-                              onChangeText={(v) => {
-                                const updated = [...form.reminderTimes];
-                                updated[idx] = v;
-                                setForm((f) => ({ ...f, reminderTimes: updated }));
-                              }}
-                              placeholder="08:00"
-                              placeholderTextColor={Colors.textMuted}
-                              keyboardType="numbers-and-punctuation"
-                              maxLength={5}
-                            />
+                          <View key={idx} style={styles.timePickerRow}>
+                            <View style={{ flex: 1 }}>
+                              <TimePickerField
+                                value={t}
+                                onChange={(v) => {
+                                  const updated = [...form.reminderTimes];
+                                  updated[idx] = v;
+                                  setForm((f) => ({ ...f, reminderTimes: updated }));
+                                }}
+                              />
+                            </View>
                             {form.reminderTimes.length > 1 && (
                               <TouchableOpacity
                                 onPress={() => {
@@ -391,8 +482,9 @@ export default function ActiveScreen() {
                                   setForm((f) => ({ ...f, reminderTimes: updated }));
                                 }}
                                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                                style={{ paddingTop: 2 }}
                               >
-                                <MaterialIcons name="remove-circle-outline" size={22} color={Colors.danger} />
+                                <MaterialIcons name="remove-circle-outline" size={26} color={Colors.danger} />
                               </TouchableOpacity>
                             )}
                           </View>
@@ -406,8 +498,8 @@ export default function ActiveScreen() {
                           <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
                         </TouchableOpacity>
                       </View>
-                      <FormField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} placeholder="YYYY-MM-DD" />
-                      <FormField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="YYYY-MM-DD" />
+                      <DatePickerField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} />
+                      <DatePickerField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="Tarih seç (opsiyonel)" />
                       <FormField label="Notlar" value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Aç karnına al gibi notlar..." multiline />
                     </View>
                   </View>
@@ -451,6 +543,12 @@ export default function ActiveScreen() {
                 {skipReason === "Diğer" && (
                   <TextInput style={styles.formInput} value={skipCustom} onChangeText={setSkipCustom} placeholder="Nedeninizi yazın..." placeholderTextColor={Colors.textMuted} multiline />
                 )}
+                {skipReasonError && (
+                  <View style={styles.addErrorBox}>
+                    <MaterialIcons name="error-outline" size={16} color={Colors.danger} />
+                    <Text style={styles.addErrorText}>{skipReasonError}</Text>
+                  </View>
+                )}
                 <Button title={skipLoading ? "AI Öneri Hazırlanıyor..." : "Devam Et"} onPress={confirmSkip} variant="primary" fullWidth loading={skipLoading} disabled={!skipReason} size="lg" style={{ marginTop: 8 }} />
               </>
             ) : (
@@ -472,10 +570,10 @@ export default function ActiveScreen() {
       <ConfirmModal
         visible={!!deleteConfirmId}
         title="İlacı Kaldır"
-        message="Bu ilacı aktif ilaçlardan kaldırmak istiyor musun?"
+        message={deleteError ?? "Bu ilacı aktif ilaçlardan kaldırmak istiyor musun?"}
         confirmLabel="Kaldır"
         onConfirm={confirmDelete}
-        onCancel={() => setDeleteConfirmId(null)}
+        onCancel={() => { setDeleteConfirmId(null); setDeleteError(null); }}
         loading={deleting}
       />
     </SafeAreaView>
@@ -656,6 +754,88 @@ const styles = StyleSheet.create({
   },
   addBtnText: { fontSize: 13, fontWeight: "700", color: Colors.textInverse },
 
+  memberBar: {
+    backgroundColor: Colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+    height: 52,
+  },
+  memberBarContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    gap: 8,
+    height: 52,
+  },
+  memberTab: {
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    backgroundColor: Colors.surfaceAlt,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  memberTabActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  memberTabText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
+  memberTabTextActive: { color: Colors.textInverse },
+
+  addChildBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: Radius.full,
+    borderWidth: 1,
+    borderColor: Colors.primary + "60",
+    backgroundColor: Colors.primaryLight,
+  },
+  addChildBtnText: { fontSize: 12, fontWeight: "600", color: Colors.primary },
+  addChildRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  addChildInput: {
+    borderWidth: 1,
+    borderColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    fontSize: 13,
+    color: Colors.text,
+    backgroundColor: Colors.surface,
+    minWidth: 110,
+  },
+  addChildConfirm: {
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    padding: 6,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  memberPickerSection: { gap: 8 },
+  memberPickerLabel: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  memberPickerRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  memberPickerChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: Radius.full,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    backgroundColor: Colors.surface,
+  },
+  memberPickerChipActive: {
+    borderColor: Colors.primary,
+    backgroundColor: Colors.primaryLight,
+  },
+  memberPickerChipText: { fontSize: 13, fontWeight: "500", color: Colors.textSecondary },
+  memberPickerChipTextActive: { color: Colors.primary, fontWeight: "700" },
+
   progressStrip: {
     backgroundColor: Colors.surface, paddingHorizontal: 20, paddingVertical: 12,
     borderBottomWidth: 1, borderBottomColor: Colors.border, gap: 8,
@@ -834,18 +1014,9 @@ const styles = StyleSheet.create({
     marginTop: 8, borderWidth: 1, borderColor: Colors.primary + "40",
   },
   addTimeBtnText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
-  timeRow: {
-    flexDirection: "row", alignItems: "center", gap: 8,
-    backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md,
-    paddingHorizontal: 12, paddingVertical: 2,
-    borderWidth: 1, borderColor: Colors.border,
-    marginBottom: 8,
+  timePickerRow: {
+    flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8,
   },
-  timeInput: {
-    flex: 1, fontSize: 16, fontWeight: "700", color: Colors.text,
-    paddingVertical: 10,
-  },
-  removeTimeBtn: { padding: 2 },
 
   addErrorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,

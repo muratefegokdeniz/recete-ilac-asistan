@@ -7,7 +7,6 @@ import {
   Image,
   TextInput,
   Modal,
-  Alert,
   TouchableOpacity,
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -18,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Colors, Shadows, Radius } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
 import { Medicine } from "../../types";
@@ -78,10 +77,14 @@ export default function CabinetScreen() {
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<FormState>({});
 
@@ -111,12 +114,14 @@ export default function CabinetScreen() {
   }
 
   async function pickAndAnalyze(fromCamera: boolean) {
+    setCameraError(null);
+    setAnalyzeError(null);
     let result: ImagePicker.ImagePickerResult;
 
     if (fromCamera) {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== "granted") {
-        Alert.alert("İzin Gerekli", "Kamera erişimi için lütfen izin verin.");
+        setCameraError("Kamera erişimi için lütfen uygulama ayarlarından izin verin.");
         return;
       }
       result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, base64: true, quality: 0.85 });
@@ -155,10 +160,10 @@ export default function CabinetScreen() {
           setForm((f) => ({ ...f, ...updates }));
           setAiFilledFields(filled);
         } else {
-          Alert.alert("Hata", "Fotoğraf okunamadı, tekrar deneyin.");
+          setAnalyzeError("Fotoğraf okunamadı, lütfen tekrar deneyin.");
         }
       } catch (e: any) {
-        Alert.alert("Analiz Hatası", String(e?.message ?? e ?? "Bilinmeyen hata"));
+        setAnalyzeError(e?.message ?? "Fotoğraf analiz edilemedi, tekrar deneyin.");
       } finally {
         setAnalyzing(false);
       }
@@ -166,7 +171,8 @@ export default function CabinetScreen() {
   }
 
   async function saveMedicine() {
-    if (!form.name?.trim()) { Alert.alert("Eksik Bilgi", "İlaç adı gereklidir."); return; }
+    setSaveError(null);
+    if (!form.name?.trim()) { setSaveError("İlaç adı gereklidir."); return; }
     setSaving(true);
     try {
       const medicine: Medicine = {
@@ -189,7 +195,7 @@ export default function CabinetScreen() {
       setForm({});
       setAiFilledFields(new Set());
     } catch (e: any) {
-      Alert.alert("Hata", e?.message ?? "İlaç kaydedilemedi.");
+      setSaveError(e?.message ?? "İlaç kaydedilemedi. Lütfen tekrar deneyin.");
     } finally {
       setSaving(false);
     }
@@ -202,14 +208,14 @@ export default function CabinetScreen() {
   async function confirmDelete() {
     if (!deleteConfirmId) return;
     setDeleting(true);
+    setDeleteError(null);
     try {
       await deleteMedicine(deleteConfirmId);
       setDeleteConfirmId(null);
       setSelectedMedicine(null);
       await loadMedicines();
     } catch (e: any) {
-      setDeleteConfirmId(null);
-      Alert.alert("Hata", e?.message ?? "İlaç silinemedi.");
+      setDeleteError(e?.message ?? "İlaç silinemedi. Lütfen tekrar deneyin.");
     } finally {
       setDeleting(false);
     }
@@ -219,6 +225,9 @@ export default function CabinetScreen() {
     setShowModal(false);
     setForm({});
     setAiFilledFields(new Set());
+    setSaveError(null);
+    setAnalyzeError(null);
+    setCameraError(null);
   }
 
   const filtered = medicines.filter((m) =>
@@ -441,6 +450,20 @@ export default function CabinetScreen() {
                 )}
               </View>
 
+              {/* Camera / analyze errors */}
+              {cameraError && (
+                <View style={styles.inlineError}>
+                  <Ionicons name="warning-outline" size={16} color={Colors.danger} />
+                  <Text style={styles.inlineErrorText}>{cameraError}</Text>
+                </View>
+              )}
+              {analyzeError && (
+                <View style={styles.inlineError}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+                  <Text style={styles.inlineErrorText}>{analyzeError}</Text>
+                </View>
+              )}
+
               {/* Analyzing */}
               {analyzing && (
                 <View style={styles.analyzingCard}>
@@ -469,10 +492,21 @@ export default function CabinetScreen() {
                 <AiFormField label="Ne İçin Kullanılır" value={form.purpose} onChange={(v) => setForm((f) => ({ ...f, purpose: v }))} placeholder="Hastalık ve belirtiler..." multiline aiFilledFields={aiFilledFields} fieldKey="purpose" disabled={analyzing} />
                 <AiFormField label="Kullanım Talimatları" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Tok/aç karnına, su ile vs..." multiline aiFilledFields={aiFilledFields} fieldKey="description" disabled={analyzing} />
                 <AiFormField label="Yan Etkiler" value={form.sideEffects} onChange={(v) => setForm((f) => ({ ...f, sideEffects: v }))} placeholder="Olası yan etkiler..." multiline aiFilledFields={aiFilledFields} fieldKey="sideEffects" disabled={analyzing} />
-                <AiFormField label="Son Kullanma Tarihi" value={form.expiryDate} onChange={(v) => setForm((f) => ({ ...f, expiryDate: v }))} placeholder="YYYY-MM" aiFilledFields={aiFilledFields} fieldKey="expiryDate" disabled={analyzing} />
+                <DatePickerField
+                  label="Son Kullanma Tarihi"
+                  value={form.expiryDate ?? ""}
+                  onChange={(v) => setForm((f) => ({ ...f, expiryDate: v }))}
+                  placeholder="Tarih seç (opsiyonel)"
+                />
                 <AiFormField label="Adet" value={form.quantity?.toString()} onChange={(v) => setForm((f) => ({ ...f, quantity: parseInt(v) || 0 }))} placeholder="0" keyboardType="numeric" aiFilledFields={aiFilledFields} fieldKey="quantity" disabled={analyzing} />
               </View>
 
+              {saveError && (
+                <View style={styles.inlineError}>
+                  <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+                  <Text style={styles.inlineErrorText}>{saveError}</Text>
+                </View>
+              )}
               <Button title="Dolaba Ekle" onPress={saveMedicine} variant="primary" fullWidth loading={saving} disabled={analyzing} size="lg" style={{ marginTop: 8, marginBottom: 8 }} />
             </ScrollView>
           </KeyboardAvoidingView>
@@ -517,10 +551,10 @@ export default function CabinetScreen() {
             <ConfirmModal
               visible={!!deleteConfirmId}
               title="İlacı Sil"
-              message="Bu ilacı dolabından silmek istiyor musun?"
+              message={deleteError ?? "Bu ilacı dolabından silmek istiyor musun?"}
               confirmLabel="Sil"
               onConfirm={confirmDelete}
-              onCancel={() => setDeleteConfirmId(null)}
+              onCancel={() => { setDeleteConfirmId(null); setDeleteError(null); }}
               loading={deleting}
             />
           </SafeAreaView>
@@ -931,6 +965,13 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: Colors.textMuted,
   },
+  inlineError: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: Colors.dangerLight, borderRadius: Radius.md,
+    padding: 12, borderWidth: 1, borderColor: Colors.danger + "30",
+  },
+  inlineErrorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
   detailRow: { backgroundColor: Colors.surfaceAlt, padding: 12, borderRadius: Radius.md, gap: 4, marginBottom: 4 },
   detailRowWarn: { backgroundColor: Colors.warningLight },
   detailLabel: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 0.5 },

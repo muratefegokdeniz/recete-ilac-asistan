@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,9 +9,12 @@ import {
   ActivityIndicator,
   ViewStyle,
   TextStyle,
+  TextInput,
+  Platform,
 } from "react-native";
 import { Colors, Shadows, Radius } from "../constants/Colors";
 import { FREQUENCY_OPTIONS, MEAL_TIMING_OPTIONS } from "../constants/MedicineOptions";
+import DateTimePicker from "@react-native-community/datetimepicker";
 
 interface CardProps {
   children: React.ReactNode;
@@ -368,6 +371,249 @@ const pickerStyles = StyleSheet.create({
   mealIcon: { fontSize: 20 },
   mealLabel: { fontSize: 12, fontWeight: "500", color: Colors.textSecondary, textAlign: "center" },
   mealLabelActive: { color: Colors.primary, fontWeight: "700" },
+});
+
+// ─── TimePickerField ──────────────────────────────────────────────────────────
+
+export function TimePickerField({
+  label,
+  value,
+  onChange,
+}: {
+  label?: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [show, setShow] = useState(false);
+  const [iosTemp, setIosTemp] = useState<Date | null>(null);
+
+  const [h, m] = value.split(":").map(Number);
+  const dateValue = new Date();
+  dateValue.setHours(h ?? 8, m ?? 0, 0, 0);
+
+  function toTimeStr(d: Date) {
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={tpStyles.field}>
+        {label && <Text style={tpStyles.label}>{label}</Text>}
+        <TextInput
+          style={tpStyles.webInput}
+          value={value}
+          onChangeText={onChange}
+          placeholder="08:00"
+          placeholderTextColor={Colors.textMuted}
+          keyboardType="numbers-and-punctuation"
+          maxLength={5}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={tpStyles.field}>
+      {label && <Text style={tpStyles.label}>{label}</Text>}
+      <TouchableOpacity style={tpStyles.btn} onPress={() => { setIosTemp(dateValue); setShow(true); }} activeOpacity={0.75}>
+        <Text style={tpStyles.clockIcon}>🕐</Text>
+        <Text style={tpStyles.valueText}>{value}</Text>
+        <Text style={tpStyles.chevron}>›</Text>
+      </TouchableOpacity>
+
+      {Platform.OS === "ios" ? (
+        <Modal visible={show} transparent animationType="slide">
+          <View style={tpStyles.iosOverlay}>
+            <View style={tpStyles.iosSheet}>
+              <View style={tpStyles.iosHeader}>
+                <TouchableOpacity onPress={() => setShow(false)}>
+                  <Text style={tpStyles.iosCancelText}>İptal</Text>
+                </TouchableOpacity>
+                <Text style={tpStyles.iosTitle}>Saat Seç</Text>
+                <TouchableOpacity onPress={() => {
+                  if (iosTemp) onChange(toTimeStr(iosTemp));
+                  setShow(false);
+                }}>
+                  <Text style={tpStyles.iosDoneText}>Tamam</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={iosTemp ?? dateValue}
+                mode="time"
+                display="spinner"
+                is24Hour
+                locale="tr-TR"
+                onChange={(_, d) => d && setIosTemp(d)}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        show && (
+          <DateTimePicker
+            value={dateValue}
+            mode="time"
+            display="default"
+            is24Hour
+            onChange={(_, d) => {
+              setShow(false);
+              if (d) onChange(toTimeStr(d));
+            }}
+          />
+        )
+      )}
+    </View>
+  );
+}
+
+// ─── DatePickerField ──────────────────────────────────────────────────────────
+
+export function DatePickerField({
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  const [iosTemp, setIosTemp] = useState<Date | null>(null);
+
+  const dateValue = value ? new Date(value + "T12:00:00") : new Date();
+
+  function toDateStr(d: Date) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  function formatDisplay(iso: string) {
+    if (!iso) return placeholder ?? "Tarih seç";
+    const [y, mo, d] = iso.split("-");
+    const MONTHS = ["Oca","Şub","Mar","Nis","May","Haz","Tem","Ağu","Eyl","Eki","Kas","Ara"];
+    return `${d} ${MONTHS[(parseInt(mo ?? "1") - 1)] ?? ""} ${y}`;
+  }
+
+  if (Platform.OS === "web") {
+    return (
+      <View style={tpStyles.field}>
+        <Text style={tpStyles.label}>{label}</Text>
+        <TextInput
+          style={tpStyles.webInput}
+          value={value}
+          onChangeText={onChange}
+          placeholder={placeholder ?? "YYYY-MM-DD"}
+          placeholderTextColor={Colors.textMuted}
+        />
+      </View>
+    );
+  }
+
+  return (
+    <View style={tpStyles.field}>
+      <Text style={tpStyles.label}>{label}</Text>
+      <TouchableOpacity style={tpStyles.btn} onPress={() => { setIosTemp(dateValue); setShow(true); }} activeOpacity={0.75}>
+        <Text style={tpStyles.clockIcon}>📅</Text>
+        <Text style={[tpStyles.valueText, !value && { color: Colors.textMuted }]}>
+          {formatDisplay(value)}
+        </Text>
+        <Text style={tpStyles.chevron}>›</Text>
+      </TouchableOpacity>
+
+      {Platform.OS === "ios" ? (
+        <Modal visible={show} transparent animationType="slide">
+          <View style={tpStyles.iosOverlay}>
+            <View style={tpStyles.iosSheet}>
+              <View style={tpStyles.iosHeader}>
+                <TouchableOpacity onPress={() => setShow(false)}>
+                  <Text style={tpStyles.iosCancelText}>İptal</Text>
+                </TouchableOpacity>
+                <Text style={tpStyles.iosTitle}>Tarih Seç</Text>
+                <TouchableOpacity onPress={() => {
+                  if (iosTemp) onChange(toDateStr(iosTemp));
+                  setShow(false);
+                }}>
+                  <Text style={tpStyles.iosDoneText}>Tamam</Text>
+                </TouchableOpacity>
+              </View>
+              <DateTimePicker
+                value={iosTemp ?? dateValue}
+                mode="date"
+                display="spinner"
+                locale="tr-TR"
+                onChange={(_, d) => d && setIosTemp(d)}
+              />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        show && (
+          <DateTimePicker
+            value={dateValue}
+            mode="date"
+            display="default"
+            onChange={(_, d) => {
+              setShow(false);
+              if (d) onChange(toDateStr(d));
+            }}
+          />
+        )
+      )}
+    </View>
+  );
+}
+
+const tpStyles = StyleSheet.create({
+  field: { gap: 6 },
+  label: { fontSize: 13, fontWeight: "600", color: Colors.text },
+  btn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    backgroundColor: Colors.surface,
+  },
+  clockIcon: { fontSize: 16 },
+  valueText: { flex: 1, fontSize: 15, fontWeight: "600", color: Colors.text },
+  chevron: { fontSize: 18, color: Colors.textMuted },
+  webInput: {
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: Radius.md,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: Colors.text,
+    backgroundColor: Colors.surface,
+  },
+  iosOverlay: {
+    flex: 1,
+    justifyContent: "flex-end",
+    backgroundColor: "rgba(0,0,0,0.4)",
+  },
+  iosSheet: {
+    backgroundColor: Colors.surface,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 32,
+  },
+  iosHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.border,
+  },
+  iosTitle: { fontSize: 16, fontWeight: "700", color: Colors.text },
+  iosCancelText: { fontSize: 15, color: Colors.textSecondary },
+  iosDoneText: { fontSize: 15, fontWeight: "700", color: Colors.primary },
 });
 
 // ─── ConfirmModal ─────────────────────────────────────────────────────────────

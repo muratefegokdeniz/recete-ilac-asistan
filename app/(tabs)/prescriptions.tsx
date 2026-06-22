@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
@@ -608,16 +608,11 @@ export default function PrescriptionScreen() {
                     <Text style={styles.timingFreq}>{mt.frequency}</Text>
                   </View>
                   <View style={styles.timingInputWrap}>
-                    <TextInput
-                      style={styles.timingInput}
+                    <TimePickerField
                       value={mt.firstTime}
-                      onChangeText={(v) => setMedicineTimings((prev) =>
+                      onChange={(v) => setMedicineTimings((prev) =>
                         prev.map((x, j) => j === i ? { ...x, firstTime: v } : x)
                       )}
-                      placeholder="08:00"
-                      placeholderTextColor={Colors.textMuted}
-                      keyboardType="numbers-and-punctuation"
-                      maxLength={5}
                     />
                   </View>
                   {times.length > 1 && (
