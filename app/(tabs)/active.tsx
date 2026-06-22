@@ -54,6 +54,7 @@ export default function ActiveScreen() {
   const [customChildren, setCustomChildren] = useState<string[]>([]);
   const [newChildName, setNewChildName] = useState("");
   const [showAddChild, setShowAddChild] = useState(false);
+  const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
   const [form, setForm] = useState({
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
@@ -248,16 +249,26 @@ export default function ActiveScreen() {
       <View style={styles.memberBar}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberBarScroll} contentContainerStyle={styles.memberBarContent}>
         {members.map((name) => (
-          <TouchableOpacity
-            key={name}
-            style={[styles.memberTab, selectedMember === name && styles.memberTabActive]}
-            onPress={() => setSelectedMember(name)}
-            activeOpacity={0.75}
-          >
-            <Text style={[styles.memberTabText, selectedMember === name && styles.memberTabTextActive]}>
-              {name}
-            </Text>
-          </TouchableOpacity>
+          <View key={name} style={[styles.memberTab, selectedMember === name && styles.memberTabActive]}>
+            <TouchableOpacity onPress={() => setSelectedMember(name)} activeOpacity={0.75}>
+              <Text style={[styles.memberTabText, selectedMember === name && styles.memberTabTextActive]}>
+                {name}
+              </Text>
+            </TouchableOpacity>
+            {name !== "Ben" && (
+              <TouchableOpacity
+                onPress={() => setDeleteChildConfirm(name)}
+                hitSlop={{ top: 6, bottom: 6, left: 6, right: 6 }}
+                style={styles.memberTabDelete}
+              >
+                <MaterialIcons
+                  name="close"
+                  size={13}
+                  color={selectedMember === name ? Colors.textInverse : Colors.textMuted}
+                />
+              </TouchableOpacity>
+            )}
+          </View>
         ))}
         {/* Çocuk ekle butonu */}
         {showAddChild ? (
@@ -581,6 +592,20 @@ export default function ActiveScreen() {
         onCancel={() => { setDeleteConfirmId(null); setDeleteError(null); }}
         loading={deleting}
       />
+
+      <ConfirmModal
+        visible={!!deleteChildConfirm}
+        title="Çocuğu Sil"
+        message={`"${deleteChildConfirm}" adlı çocuğu sekmelerden silmek istiyor musun?`}
+        confirmLabel="Sil"
+        onConfirm={() => {
+          if (!deleteChildConfirm) return;
+          setCustomChildren((prev) => prev.filter((c) => c !== deleteChildConfirm));
+          if (selectedMember === deleteChildConfirm) setSelectedMember("Ben");
+          setDeleteChildConfirm(null);
+        }}
+        onCancel={() => setDeleteChildConfirm(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -778,12 +803,19 @@ const styles = StyleSheet.create({
     height: 52,
   },
   memberTab: {
-    paddingHorizontal: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    paddingLeft: 14,
+    paddingRight: 10,
     paddingVertical: 7,
     borderRadius: Radius.full,
     backgroundColor: Colors.surfaceAlt,
     borderWidth: 1,
     borderColor: Colors.border,
+  },
+  memberTabDelete: {
+    marginLeft: 2,
   },
   memberTabActive: {
     backgroundColor: Colors.primary,
