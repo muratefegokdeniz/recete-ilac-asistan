@@ -245,7 +245,8 @@ export default function ActiveScreen() {
       </View>
 
       {/* Üye sekme çubuğu */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberBar} contentContainerStyle={styles.memberBarContent}>
+      <View style={styles.memberBar}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberBarScroll} contentContainerStyle={styles.memberBarContent}>
         {members.map((name) => (
           <TouchableOpacity
             key={name}
@@ -294,6 +295,7 @@ export default function ActiveScreen() {
           </TouchableOpacity>
         )}
       </ScrollView>
+      </View>
 
       {/* Progress strip */}
       {filteredMedicines.length > 0 && (
@@ -758,6 +760,11 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
+    height: 52,
+    overflow: "hidden",
+  },
+  memberBarScroll: {
+    flex: 1,
     height: 52,
   },
   memberBarContent: {
