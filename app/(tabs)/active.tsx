@@ -1,4 +1,5 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
@@ -52,9 +53,24 @@ export default function ActiveScreen() {
   const [skipLoading, setSkipLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string>("Ben");
   const [customChildren, setCustomChildren] = useState<string[]>([]);
+  const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
   const [newChildName, setNewChildName] = useState("");
   const [showAddChild, setShowAddChild] = useState(false);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
+
+  useEffect(() => {
+    AsyncStorage.getItem("customChildren").then((v) => { if (v) setCustomChildren(JSON.parse(v)); });
+    AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
+  }, []);
+
+  const saveCustomChildren = (list: string[]) => {
+    setCustomChildren(list);
+    AsyncStorage.setItem("customChildren", JSON.stringify(list));
+  };
+  const saveHiddenChildren = (list: string[]) => {
+    setHiddenChildren(list);
+    AsyncStorage.setItem("hiddenChildren", JSON.stringify(list));
+  };
   const [form, setForm] = useState({
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
@@ -215,9 +231,10 @@ export default function ActiveScreen() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // İlaçlardan gelen + manuel eklenen çocuk isimleri (tekrarsız)
+  // İlaçlardan gelen + manuel eklenen çocuk isimleri, silinenleri çıkar
   const childNamesFromMeds = medicines.filter((m) => m.memberName).map((m) => m.memberName!);
-  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]));
+  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]))
+    .filter((n) => !hiddenChildren.includes(n));
   const members = ["Ben", ...allChildren];
 
   // Seçili üyeye göre filtrele
@@ -288,7 +305,11 @@ export default function ActiveScreen() {
                 const name = newChildName.trim();
                 if (name) {
                   if (!members.includes(name)) {
-                    setCustomChildren((prev) => [...prev, name]);
+                    saveCustomChildren([...customChildren, name]);
+                    // Eğer daha önce silindiyse, hidden listesinden çıkar
+                    if (hiddenChildren.includes(name)) {
+                      saveHiddenChildren(hiddenChildren.filter((c) => c !== name));
+                    }
                   }
                   setSelectedMember(name);
                 }
@@ -600,7 +621,8 @@ export default function ActiveScreen() {
         confirmLabel="Sil"
         onConfirm={() => {
           if (!deleteChildConfirm) return;
-          setCustomChildren((prev) => prev.filter((c) => c !== deleteChildConfirm));
+          saveCustomChildren(customChildren.filter((c) => c !== deleteChildConfirm));
+          saveHiddenChildren([...hiddenChildren, deleteChildConfirm]);
           if (selectedMember === deleteChildConfirm) setSelectedMember("Ben");
           setDeleteChildConfirm(null);
         }}
