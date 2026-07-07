@@ -68,6 +68,19 @@ export interface ChatMessage {
   timestamp: string;
 }
 
+export interface FamilyMember {
+  id: string;
+  name: string;
+  color: string;
+  age?: number;
+  gender?: string;
+  height?: number;
+  weight?: number;
+  bloodType?: string;
+  chronicConditions?: string;
+  allergies?: string;
+}
+
 export interface ChildVaccine {
   id: string;
   childName: string;

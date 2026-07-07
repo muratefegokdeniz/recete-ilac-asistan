@@ -9,22 +9,13 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import {
-  getAllActiveMedicines, getDosesForDateRange, markDoseTaken, skipDose,
+  getAllActiveMedicines, getDosesForDateRange, markDoseTaken, skipDose, getFamilyMembers,
 } from "../../services/database";
-import { ActiveMedicine, TakenDose } from "../../types";
+import { ActiveMedicine, TakenDose, FamilyMember } from "../../types";
+import { fallbackMemberColor } from "../../constants/MemberColors";
 
 const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MONTH_NAMES = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
-
-// "Ben" hariç aile üyelerini birbirinden ayırt etmek için renk paleti — durum
-// renkleriyle (yeşil=alındı, kırmızı=atlandı, teal=primary) çakışmayacak tonlar.
-const MEMBER_COLORS = ["#8B5CF6", "#F59E0B", "#EC4899", "#3B82F6", "#F97316", "#6366F1", "#0EA5E9", "#D946EF"];
-
-function getMemberColor(memberName: string | undefined, children: string[]): string {
-  if (!memberName) return Colors.primary; // "Ben"
-  const idx = children.indexOf(memberName);
-  return MEMBER_COLORS[idx >= 0 ? idx % MEMBER_COLORS.length : 0]!;
-}
 
 interface CalDose {
   medicine: ActiveMedicine;
@@ -67,14 +58,19 @@ export default function CalendarScreen() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [selectedMember, setSelectedMember] = useState<string>("Tümü");
-  const [customChildren, setCustomChildren] = useState<string[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
 
   const [, forceTick] = useState(0);
 
+  function getMemberColor(memberName: string | undefined, children: string[]): string {
+    if (!memberName) return Colors.primary; // "Ben"
+    return familyMembers.find((m) => m.name === memberName)?.color ?? fallbackMemberColor(memberName, children);
+  }
+
   useFocusEffect(useCallback(() => {
     loadMonth(viewDate);
-    AsyncStorage.getItem("customChildren").then((v) => { if (v) setCustomChildren(JSON.parse(v)); });
+    getFamilyMembers().then(setFamilyMembers).catch(() => {});
     AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
     // "Kaçırıldı" durumu saate bağlı olduğundan, ekran açıkken de 15 dk eşiğini
     // geçen dozların kırmızıya dönmesi için periyodik olarak yeniden çizdiriyoruz.
@@ -174,8 +170,9 @@ export default function CalendarScreen() {
   const totalRows = Math.ceil(totalCells / 7);
 
   // Üye seçimi: "Tümü" = herkes karışık, "Ben" = sadece kendi ilaçların, yoksa çocuk adı
+  const familyMemberNames = familyMembers.map((m) => m.name);
   const childNamesFromMeds = activeMeds.filter((m) => m.memberName).map((m) => m.memberName!);
-  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]))
+  const allChildren = Array.from(new Set([...familyMemberNames, ...childNamesFromMeds]))
     .filter((n) => !hiddenChildren.includes(n));
   const memberTabs = ["Tümü", "Ben", ...allChildren];
 

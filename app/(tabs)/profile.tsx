@@ -8,8 +8,13 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius } from "../../constants/Colors";
 import { Button, ConfirmModal } from "../../components/ui";
+import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { useAuth } from "../../context/AuthContext";
-import { getProfile, saveProfile, UserProfile } from "../../services/database";
+import {
+  getProfile, saveProfile, UserProfile,
+  getFamilyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
+} from "../../services/database";
+import { FamilyMember } from "../../types";
 
 const GENDER_OPTIONS = ["Erkek", "Kadın", "Belirtmek istemiyorum"];
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyorum"];
@@ -22,12 +27,22 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
+  const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
+  const [showAddChild, setShowAddChild] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
       getProfile().then((p) => { if (p) setProfile(p); }).catch(() => {});
+      loadFamilyMembers();
     }, [])
   );
+
+  async function loadFamilyMembers() {
+    try {
+      setFamilyMembers(await getFamilyMembers());
+    } catch (e) { console.error(e); }
+  }
 
   function openEdit() {
     setDraft({ ...profile });
@@ -104,6 +119,36 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Sağlık Bilgileri</Text>
           <InfoRow icon="medkit-outline" label="Kronik Hastalıklar" value={profile.chronicConditions} multiline />
           <InfoRow icon="warning-outline" label="Alerjiler" value={profile.allergies} multiline />
+        </View>
+
+        {/* Aile Üyeleri */}
+        <View style={styles.section}>
+          <View style={styles.childrenSectionHeader}>
+            <Text style={styles.sectionTitle}>Çocuklarım</Text>
+            <TouchableOpacity onPress={() => setShowAddChild(true)} style={styles.addChildLink}>
+              <Ionicons name="add-circle-outline" size={16} color={Colors.primary} />
+              <Text style={styles.addChildLinkText}>Ekle</Text>
+            </TouchableOpacity>
+          </View>
+          {familyMembers.length === 0 ? (
+            <Text style={[styles.infoValue, styles.infoEmpty]}>Henüz çocuk eklenmedi.</Text>
+          ) : (
+            familyMembers.map((child) => (
+              <TouchableOpacity key={child.id} style={styles.childRow} onPress={() => setEditingChild(child)} activeOpacity={0.75}>
+                <View style={[styles.childAvatar, { backgroundColor: child.color }]}>
+                  <Text style={styles.childAvatarText}>{child.name.charAt(0).toUpperCase()}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.childName}>{child.name}</Text>
+                  <Text style={styles.childSub}>
+                    {[child.age ? `${child.age} yaş` : null, child.gender, child.bloodType]
+                      .filter(Boolean).join(" · ") || "Detay girilmedi"}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+              </TouchableOpacity>
+            ))
+          )}
         </View>
 
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
@@ -205,6 +250,36 @@ export default function ProfileScreen() {
         confirmLabel="Çıkış Yap"
         onConfirm={() => { setShowSignOutConfirm(false); signOut(); }}
         onCancel={() => setShowSignOutConfirm(false)}
+      />
+
+      <ChildProfileModal
+        visible={showAddChild}
+        mode="create"
+        onCancel={() => setShowAddChild(false)}
+        onSave={async (member) => {
+          await addFamilyMember(member);
+          await loadFamilyMembers();
+          setShowAddChild(false);
+        }}
+      />
+
+      <ChildProfileModal
+        visible={!!editingChild}
+        mode="edit"
+        initial={editingChild ?? undefined}
+        onCancel={() => setEditingChild(null)}
+        onSave={async (member) => {
+          if (!editingChild) return;
+          await updateFamilyMember(editingChild.id, member);
+          await loadFamilyMembers();
+          setEditingChild(null);
+        }}
+        onDelete={async () => {
+          if (!editingChild) return;
+          await deleteFamilyMember(editingChild.id);
+          await loadFamilyMembers();
+          setEditingChild(null);
+        }}
       />
     </SafeAreaView>
   );
@@ -323,6 +398,18 @@ const styles = StyleSheet.create({
   chipActive: { borderColor: Colors.primary, backgroundColor: Colors.primaryLight },
   chipText: { fontSize: 13, color: Colors.textSecondary, fontWeight: "500" },
   chipTextActive: { color: Colors.primary, fontWeight: "700" },
+
+  childrenSectionHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 12 },
+  addChildLink: { flexDirection: "row", alignItems: "center", gap: 4 },
+  addChildLinkText: { fontSize: 13, fontWeight: "600", color: Colors.primary },
+  childRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  childAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: "center", justifyContent: "center" },
+  childAvatarText: { fontSize: 16, fontWeight: "800", color: "white" },
+  childName: { fontSize: 15, fontWeight: "700", color: Colors.text },
+  childSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 
   errorBox: {
     flexDirection: "row", alignItems: "flex-start", gap: 8,

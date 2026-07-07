@@ -126,6 +126,17 @@ Akış:
    sadece client tarafında hangi `memberName`'e izin verildiği filtrelenir — gerçek
    yetki sınırı Edge Function/RLS seviyesinde, sadece UI'da değil, uygulanmalı.
 
+## Ek İş — Çocuk Profilleri ✅ tamamlandı
+
+Çocuk eklemek artık sadece isim girmek değil — yeni bir `family_members` tablosu
+(yaş, cinsiyet, boy, kilo, kan grubu, alerjiler, kronik hastalıklar, seçilen renk)
+eklendi. "Çocuk Ekle" akışı (hem "Takip" ekranında hem "Profil" ekranında)
+`ChildProfileModal` bileşeniyle tam bir form açıyor; kullanıcı `MEMBER_COLORS`
+paletinden kendi rengini seçebiliyor. Takvim, Takip ve Aşı Kartı ekranları artık
+üye rengini AsyncStorage yerine bu tablodan okuyor. Profil ekranına "Çocuklarım"
+bölümü eklendi — her çocuğa dokunarak profilini görüntüleyip düzenleyebilir veya
+silebilirsiniz.
+
 ## İş 5 — Ödeme Altyapısı (sadece altyapı, gerçek ödeme yok)
 
 - `profiles` tablosuna `is_premium boolean default false` eklenir.

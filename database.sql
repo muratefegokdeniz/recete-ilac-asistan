@@ -18,6 +18,22 @@ CREATE TABLE public.active_medicines (
   CONSTRAINT active_medicines_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT active_medicines_medicine_id_fkey FOREIGN KEY (medicine_id) REFERENCES public.medicines(id)
 );
+CREATE TABLE public.family_members (
+  id text NOT NULL,
+  user_id uuid NOT NULL,
+  name text NOT NULL,
+  color text NOT NULL,
+  age integer,
+  gender text,
+  height integer,
+  weight integer,
+  blood_type text,
+  chronic_conditions text,
+  allergies text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT family_members_pkey PRIMARY KEY (id),
+  CONSTRAINT family_members_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.child_vaccines (
   id text NOT NULL,
   user_id uuid NOT NULL,

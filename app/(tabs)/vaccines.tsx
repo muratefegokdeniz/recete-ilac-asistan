@@ -10,13 +10,14 @@ import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, EmptyState, DatePickerField } from "../../components/ui";
 import {
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
-  setVaccineCompleted, setVaccineNotificationId,
+  setVaccineCompleted, setVaccineNotificationId, getFamilyMembers,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
-import { ChildVaccine } from "../../types";
+import { ChildVaccine, FamilyMember } from "../../types";
+import { fallbackMemberColor } from "../../constants/MemberColors";
 
 export default function VaccinesScreen() {
-  const [customChildren, setCustomChildren] = useState<string[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
   const [childNamesFromMeds, setChildNamesFromMeds] = useState<string[]>([]);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
@@ -28,8 +29,13 @@ export default function VaccinesScreen() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]))
+  const familyMemberNames = familyMembers.map((m) => m.name);
+  const allChildren = Array.from(new Set([...familyMemberNames, ...childNamesFromMeds]))
     .filter((n) => !hiddenChildren.includes(n));
+
+  function colorFor(name: string): string {
+    return familyMembers.find((m) => m.name === name)?.color ?? fallbackMemberColor(name, allChildren);
+  }
 
   useFocusEffect(useCallback(() => {
     loadChildren();
@@ -38,19 +44,19 @@ export default function VaccinesScreen() {
   async function loadChildren() {
     setLoading(true);
     try {
-      const [custom, hidden, meds] = await Promise.all([
-        AsyncStorage.getItem("customChildren"),
+      const [members, hidden, meds] = await Promise.all([
+        getFamilyMembers(),
         AsyncStorage.getItem("hiddenChildren"),
         getAllActiveMedicines(),
       ]);
-      const customList: string[] = custom ? JSON.parse(custom) : [];
       const hiddenList: string[] = hidden ? JSON.parse(hidden) : [];
       const fromMeds = meds.filter((m) => m.memberName).map((m) => m.memberName!);
-      setCustomChildren(customList);
+      setFamilyMembers(members);
       setHiddenChildren(hiddenList);
       setChildNamesFromMeds(fromMeds);
 
-      const children = Array.from(new Set([...customList, ...fromMeds])).filter((n) => !hiddenList.includes(n));
+      const memberNames = members.map((m) => m.name);
+      const children = Array.from(new Set([...memberNames, ...fromMeds])).filter((n) => !hiddenList.includes(n));
       const next = selectedChild && children.includes(selectedChild) ? selectedChild : (children[0] ?? null);
       setSelectedChild(next);
       if (next) await loadVaccines(next);
@@ -131,16 +137,21 @@ export default function VaccinesScreen() {
       ) : (
         <>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberRow} contentContainerStyle={{ paddingHorizontal: 16, gap: 8 }}>
-            {allChildren.map((name) => (
-              <TouchableOpacity
-                key={name}
-                style={[styles.memberTab, selectedChild === name && styles.memberTabActive]}
-                onPress={() => selectChild(name)}
-                activeOpacity={0.8}
-              >
-                <Text style={[styles.memberTabText, selectedChild === name && styles.memberTabTextActive]}>{name}</Text>
-              </TouchableOpacity>
-            ))}
+            {allChildren.map((name) => {
+              const color = colorFor(name);
+              const active = selectedChild === name;
+              return (
+                <TouchableOpacity
+                  key={name}
+                  style={[styles.memberTab, active && { backgroundColor: color, borderColor: color }]}
+                  onPress={() => selectChild(name)}
+                  activeOpacity={0.8}
+                >
+                  <View style={[styles.memberDot, { backgroundColor: active ? Colors.textInverse : color }]} />
+                  <Text style={[styles.memberTabText, active && styles.memberTabTextActive]}>{name}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
 
           {loading ? (
@@ -210,8 +221,8 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.text },
 
   memberRow: { flexGrow: 0, marginBottom: 8 },
-  memberTab: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
-  memberTabActive: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  memberTab: { flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 16, paddingVertical: 10, borderRadius: Radius.full, backgroundColor: Colors.surface, borderWidth: 1, borderColor: Colors.border },
+  memberDot: { width: 8, height: 8, borderRadius: 4 },
   memberTabText: { fontSize: 14, fontWeight: "600", color: Colors.textSecondary },
   memberTabTextActive: { color: Colors.textInverse },
 

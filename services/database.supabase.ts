@@ -1,5 +1,5 @@
 import { supabase } from "./supabase";
-import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage, ChildVaccine } from "../types";
+import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage, ChildVaccine, FamilyMember } from "../types";
 import { VACCINE_SCHEDULE } from "../constants/VaccineSchedule";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
@@ -50,6 +50,21 @@ function rowToTakenDose(r: any): TakenDose {
     scheduledTime: r.scheduled_time,
     takenAt: r.taken_at ?? undefined,
     skipped: r.skipped ?? false,
+  };
+}
+
+function rowToFamilyMember(r: any): FamilyMember {
+  return {
+    id: r.id,
+    name: r.name,
+    color: r.color,
+    age: r.age ?? undefined,
+    gender: r.gender ?? undefined,
+    height: r.height ?? undefined,
+    weight: r.weight ?? undefined,
+    bloodType: r.blood_type ?? undefined,
+    chronicConditions: r.chronic_conditions ?? undefined,
+    allergies: r.allergies ?? undefined,
   };
 }
 
@@ -372,6 +387,61 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     allergies: profile.allergies ?? null,
     updated_at: new Date().toISOString(),
   });
+  if (error) throw error;
+}
+
+// ─── Family Members (Çocuk Profilleri) ──────────────────────────────────────
+
+export async function getFamilyMembers(): Promise<FamilyMember[]> {
+  const userId = await getUserId();
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("family_members")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToFamilyMember);
+}
+
+export async function addFamilyMember(member: Omit<FamilyMember, "id">): Promise<FamilyMember> {
+  const userId = await getUserId();
+  if (!userId) throw new Error("Giriş yapılmamış");
+  const id = `fam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const { error } = await supabase.from("family_members").insert({
+    id,
+    user_id: userId,
+    name: member.name,
+    color: member.color,
+    age: member.age ?? null,
+    gender: member.gender ?? null,
+    height: member.height ?? null,
+    weight: member.weight ?? null,
+    blood_type: member.bloodType ?? null,
+    chronic_conditions: member.chronicConditions ?? null,
+    allergies: member.allergies ?? null,
+  });
+  if (error) throw error;
+  return { ...member, id };
+}
+
+export async function updateFamilyMember(id: string, member: Omit<FamilyMember, "id">): Promise<void> {
+  const { error } = await supabase.from("family_members").update({
+    name: member.name,
+    color: member.color,
+    age: member.age ?? null,
+    gender: member.gender ?? null,
+    height: member.height ?? null,
+    weight: member.weight ?? null,
+    blood_type: member.bloodType ?? null,
+    chronic_conditions: member.chronicConditions ?? null,
+    allergies: member.allergies ?? null,
+  }).eq("id", id);
+  if (error) throw error;
+}
+
+export async function deleteFamilyMember(id: string): Promise<void> {
+  const { error } = await supabase.from("family_members").delete().eq("id", id);
   if (error) throw error;
 }
 

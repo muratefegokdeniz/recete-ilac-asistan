@@ -10,14 +10,17 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
+import { ChildProfileModal } from "../../components/ChildProfileModal";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
+  getFamilyMembers, addFamilyMember, deleteFamilyMember,
 } from "../../services/database";
-import { ActiveMedicine, TakenDose, Medicine } from "../../types";
+import { ActiveMedicine, TakenDose, Medicine, FamilyMember } from "../../types";
 import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
 import { requestPermissions, scheduleDailyReminder, cancelReminders } from "../../services/notifications";
 import { getSkipAdvice } from "../../services/anthropic";
+import { fallbackMemberColor } from "../../constants/MemberColors";
 
 type AddMode = "manual" | "cabinet";
 interface DueReminder { medicineId: string; medicineName: string; time: string; }
@@ -52,21 +55,22 @@ export default function ActiveScreen() {
   const [skipAdvice, setSkipAdvice] = useState<string | null>(null);
   const [skipLoading, setSkipLoading] = useState(false);
   const [selectedMember, setSelectedMember] = useState<string>("Ben");
-  const [customChildren, setCustomChildren] = useState<string[]>([]);
+  const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
-  const [newChildName, setNewChildName] = useState("");
   const [showAddChild, setShowAddChild] = useState(false);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem("customChildren").then((v) => { if (v) setCustomChildren(JSON.parse(v)); });
+    loadFamilyMembers();
     AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
   }, []);
 
-  const saveCustomChildren = (list: string[]) => {
-    setCustomChildren(list);
-    AsyncStorage.setItem("customChildren", JSON.stringify(list));
-  };
+  async function loadFamilyMembers() {
+    try {
+      setFamilyMembers(await getFamilyMembers());
+    } catch (e) { console.error(e); }
+  }
+
   const saveHiddenChildren = (list: string[]) => {
     setHiddenChildren(list);
     AsyncStorage.setItem("hiddenChildren", JSON.stringify(list));
@@ -231,11 +235,16 @@ export default function ActiveScreen() {
 
   const today = new Date().toISOString().split("T")[0];
 
-  // İlaçlardan gelen + manuel eklenen çocuk isimleri, silinenleri çıkar
+  // Profili olan + ilaçlardan gelen çocuk isimleri, silinenleri çıkar
+  const familyMemberNames = familyMembers.map((m) => m.name);
   const childNamesFromMeds = medicines.filter((m) => m.memberName).map((m) => m.memberName!);
-  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]))
+  const allChildren = Array.from(new Set([...familyMemberNames, ...childNamesFromMeds]))
     .filter((n) => !hiddenChildren.includes(n));
   const members = ["Ben", ...allChildren];
+
+  function memberColorFor(name: string): string {
+    return familyMembers.find((m) => m.name === name)?.color ?? fallbackMemberColor(name, allChildren);
+  }
 
   // Seçili üyeye göre filtrele
   const filteredMedicines = medicines.filter((m) =>
@@ -266,8 +275,17 @@ export default function ActiveScreen() {
       <View style={styles.memberBar}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.memberBarScroll} contentContainerStyle={styles.memberBarContent}>
         {members.map((name) => (
-          <View key={name} style={[styles.memberTab, selectedMember === name && styles.memberTabActive]}>
-            <TouchableOpacity onPress={() => setSelectedMember(name)} activeOpacity={0.75}>
+          <View
+            key={name}
+            style={[
+              styles.memberTab,
+              selectedMember === name && { backgroundColor: memberColorFor(name), borderColor: memberColorFor(name) },
+            ]}
+          >
+            <TouchableOpacity onPress={() => setSelectedMember(name)} activeOpacity={0.75} style={styles.memberTabTouch}>
+              {name !== "Ben" && (
+                <View style={[styles.memberTabDot, { backgroundColor: selectedMember === name ? Colors.textInverse : memberColorFor(name) }]} />
+              )}
               <Text style={[styles.memberTabText, selectedMember === name && styles.memberTabTextActive]}>
                 {name}
               </Text>
@@ -287,48 +305,10 @@ export default function ActiveScreen() {
             )}
           </View>
         ))}
-        {/* Çocuk ekle butonu */}
-        {showAddChild ? (
-          <View style={styles.addChildRow}>
-            <TextInput
-              style={styles.addChildInput}
-              value={newChildName}
-              onChangeText={setNewChildName}
-              placeholder="Çocuk adı..."
-              placeholderTextColor={Colors.textMuted}
-              autoFocus
-              maxLength={20}
-            />
-            <TouchableOpacity
-              style={styles.addChildConfirm}
-              onPress={() => {
-                const name = newChildName.trim();
-                if (name) {
-                  if (!members.includes(name)) {
-                    saveCustomChildren([...customChildren, name]);
-                    // Eğer daha önce silindiyse, hidden listesinden çıkar
-                    if (hiddenChildren.includes(name)) {
-                      saveHiddenChildren(hiddenChildren.filter((c) => c !== name));
-                    }
-                  }
-                  setSelectedMember(name);
-                }
-                setNewChildName("");
-                setShowAddChild(false);
-              }}
-            >
-              <MaterialIcons name="check" size={16} color={Colors.textInverse} />
-            </TouchableOpacity>
-            <TouchableOpacity onPress={() => { setShowAddChild(false); setNewChildName(""); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-              <MaterialIcons name="close" size={18} color={Colors.textMuted} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <TouchableOpacity style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
-            <MaterialIcons name="add" size={16} color={Colors.primary} />
-            <Text style={styles.addChildBtnText}>Çocuk Ekle</Text>
-          </TouchableOpacity>
-        )}
+        <TouchableOpacity style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
+          <MaterialIcons name="add" size={16} color={Colors.primary} />
+          <Text style={styles.addChildBtnText}>Çocuk Ekle</Text>
+        </TouchableOpacity>
       </ScrollView>
       </View>
 
@@ -619,14 +599,33 @@ export default function ActiveScreen() {
         title="Çocuğu Sil"
         message={`"${deleteChildConfirm}" adlı çocuğu sekmelerden silmek istiyor musun?`}
         confirmLabel="Sil"
-        onConfirm={() => {
+        onConfirm={async () => {
           if (!deleteChildConfirm) return;
-          saveCustomChildren(customChildren.filter((c) => c !== deleteChildConfirm));
+          const match = familyMembers.find((m) => m.name === deleteChildConfirm);
+          if (match) {
+            await deleteFamilyMember(match.id).catch(() => {});
+            await loadFamilyMembers();
+          }
           saveHiddenChildren([...hiddenChildren, deleteChildConfirm]);
           if (selectedMember === deleteChildConfirm) setSelectedMember("Ben");
           setDeleteChildConfirm(null);
         }}
         onCancel={() => setDeleteChildConfirm(null)}
+      />
+
+      <ChildProfileModal
+        visible={showAddChild}
+        mode="create"
+        onCancel={() => setShowAddChild(false)}
+        onSave={async (member) => {
+          const created = await addFamilyMember(member);
+          await loadFamilyMembers();
+          if (hiddenChildren.includes(created.name)) {
+            saveHiddenChildren(hiddenChildren.filter((c) => c !== created.name));
+          }
+          setSelectedMember(created.name);
+          setShowAddChild(false);
+        }}
       />
     </SafeAreaView>
   );
@@ -836,6 +835,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
+  memberTabTouch: { flexDirection: "row", alignItems: "center", gap: 6 },
+  memberTabDot: { width: 8, height: 8, borderRadius: 4 },
   memberTabDelete: {
     marginLeft: 2,
   },
