@@ -35,13 +35,16 @@ export function ChildProfileModal({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // "edit" modu bir profil kartı olarak açılır, "Düzenle"ye basınca forma geçer.
+  const [screen, setScreen] = useState<"view" | "form">("form");
 
   useEffect(() => {
     if (visible) {
       setDraft(initial ? { ...initial } : { ...EMPTY_DRAFT, color: MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)]! });
       setError(null);
+      setScreen(mode === "edit" ? "view" : "form");
     }
-  }, [visible, initial]);
+  }, [visible, initial, mode]);
 
   async function handleSave() {
     if (!draft.name.trim()) {
@@ -69,14 +72,79 @@ export function ChildProfileModal({
     }
   }
 
+  if (visible && screen === "view" && initial) {
+    return (
+      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
+        <View style={styles.modal}>
+          <View style={styles.modalHeader}>
+            <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="close" size={24} color={Colors.text} />
+            </TouchableOpacity>
+            <Text style={styles.modalTitle}>Çocuk Profili</Text>
+            <TouchableOpacity onPress={() => setScreen("form")} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <Ionicons name="create-outline" size={22} color={Colors.primary} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+            <View style={styles.avatarSection}>
+              <View style={[styles.avatar, { backgroundColor: initial.color }]}>
+                <Text style={styles.avatarText}>{initial.name.charAt(0).toUpperCase()}</Text>
+              </View>
+              <Text style={styles.name}>{initial.name}</Text>
+            </View>
+
+            <View style={styles.viewSection}>
+              <Text style={styles.sectionTitle}>Kişisel Bilgiler</Text>
+              <InfoRow icon="calendar-outline" label="Yaş" value={initial.age ? `${initial.age} yaş` : undefined} />
+              <InfoRow icon="male-female-outline" label="Cinsiyet" value={initial.gender} />
+            </View>
+
+            <View style={styles.viewSection}>
+              <Text style={styles.sectionTitle}>Fiziksel Bilgiler</Text>
+              <View style={styles.rowFields}>
+                <View style={{ flex: 1 }}>
+                  <InfoRow icon="resize-outline" label="Boy" value={initial.height ? `${initial.height} cm` : undefined} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <InfoRow icon="barbell-outline" label="Kilo" value={initial.weight ? `${initial.weight} kg` : undefined} />
+                </View>
+              </View>
+              <InfoRow icon="water-outline" label="Kan Grubu" value={initial.bloodType} />
+            </View>
+
+            <View style={styles.viewSection}>
+              <Text style={styles.sectionTitle}>Sağlık Bilgileri</Text>
+              <InfoRow icon="medkit-outline" label="Kronik Hastalıklar" value={initial.chronicConditions} multiline />
+              <InfoRow icon="warning-outline" label="Alerjiler" value={initial.allergies} multiline />
+            </View>
+
+            <Button title="Düzenle" onPress={() => setScreen("form")} variant="outline" fullWidth size="lg" />
+
+            {onDelete && (
+              <TouchableOpacity style={styles.deleteBtn} onPress={handleDelete} disabled={deleting} activeOpacity={0.8}>
+                {deleting ? <ActivityIndicator size="small" color={Colors.danger} /> : (
+                  <>
+                    <Ionicons name="trash-outline" size={16} color={Colors.danger} />
+                    <Text style={styles.deleteBtnText}>Profili Sil</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </ScrollView>
+        </View>
+      </Modal>
+    );
+  }
+
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCancel}>
       <View style={styles.modal}>
         <View style={styles.modalHeader}>
-          <TouchableOpacity onPress={onCancel} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-            <Ionicons name="close" size={24} color={Colors.text} />
+          <TouchableOpacity onPress={() => (mode === "edit" && initial ? setScreen("view") : onCancel())} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name={mode === "edit" && initial ? "arrow-back" : "close"} size={24} color={Colors.text} />
           </TouchableOpacity>
-          <Text style={styles.modalTitle}>{mode === "create" ? "Çocuk Ekle" : "Çocuk Profili"}</Text>
+          <Text style={styles.modalTitle}>{mode === "create" ? "Çocuk Ekle" : "Profili Düzenle"}</Text>
           <View style={{ width: 24 }} />
         </View>
 
@@ -189,6 +257,25 @@ export function ChildProfileModal({
   );
 }
 
+function InfoRow({ icon, label, value, multiline }: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value?: string | number;
+  multiline?: boolean;
+}) {
+  return (
+    <View style={styles.infoRow}>
+      <View style={styles.infoLabelRow}>
+        <Ionicons name={icon} size={14} color={Colors.textMuted} />
+        <Text style={styles.infoLabel}>{label}</Text>
+      </View>
+      <Text style={[styles.infoValue, !value && styles.infoEmpty]} numberOfLines={multiline ? 0 : 1}>
+        {value || "Girilmedi"}
+      </Text>
+    </View>
+  );
+}
+
 function Field({ label, icon, children }: { label: string; icon: keyof typeof Ionicons.glyphMap; children: React.ReactNode }) {
   return (
     <View style={styles.field}>
@@ -210,6 +297,23 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 17, fontWeight: "700", color: Colors.text },
   content: { padding: 20, gap: 4, paddingBottom: 40 },
+
+  avatarSection: { alignItems: "center", paddingVertical: 12, gap: 6, marginBottom: 8 },
+  avatar: { width: 88, height: 88, borderRadius: 44, alignItems: "center", justifyContent: "center", marginBottom: 4 },
+  avatarText: { fontSize: 36, fontWeight: "800", color: "white" },
+  name: { fontSize: 20, fontWeight: "700", color: Colors.text },
+
+  viewSection: {
+    backgroundColor: Colors.surface, borderRadius: Radius.xl,
+    padding: 16, marginBottom: 16,
+    shadowColor: Colors.text, shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  sectionTitle: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 },
+  infoRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
+  infoLabel: { fontSize: 11, fontWeight: "600", color: Colors.textMuted },
+  infoValue: { fontSize: 15, color: Colors.text, fontWeight: "500" },
+  infoEmpty: { color: Colors.textMuted, fontStyle: "italic" },
 
   field: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
   fieldLabel: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 6 },
