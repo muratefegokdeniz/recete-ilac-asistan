@@ -290,37 +290,42 @@ export default function CalendarScreen() {
                           </Text>
                         </View>
 
-                        {doses.slice(0, 3).map((dose, i) => (
-                          <View
-                            key={i}
-                            style={[
-                              styles.doseChip,
-                              dose.taken
-                                ? styles.chipTaken
-                                : hasMissed && !dose.taken && !dose.skipped
-                                ? styles.chipMissed
-                                : dose.skipped
-                                ? styles.chipSkipped
-                                : styles.chipScheduled,
-                              selectedMember === "Tümü" && {
-                                borderLeftWidth: 2,
-                                borderLeftColor: getMemberColor(dose.medicine.memberName, allChildren),
-                              },
-                            ]}
-                          >
-                            <Text style={[
-                              styles.doseChipText,
-                              dose.taken ? styles.chipTakenText
-                                : hasMissed && !dose.taken ? styles.chipMissedText
-                                : dose.skipped ? styles.chipSkippedText
-                                : styles.chipScheduledText,
-                            ]} numberOfLines={1}>
-                              {dose.taken ? "✓ " : hasMissed && !dose.taken && !dose.skipped ? "! " : ""}
-                              {selectedMember === "Tümü" && dose.medicine.memberName ? `${dose.medicine.memberName}: ` : ""}
-                              {dose.medicine.medicineName}
-                            </Text>
-                          </View>
-                        ))}
+                        {doses.slice(0, 3).map((dose, i) => {
+                          const isMissedDose = hasMissed && !dose.taken && !dose.skipped;
+                          const isChildInMixedView = selectedMember === "Tümü" && !!dose.medicine.memberName;
+                          const memberColor = getMemberColor(dose.medicine.memberName, allChildren);
+
+                          // Öncelik: alınmadıysa kırmızı, alındıysa yeşil, atlandıysa gri —
+                          // bunların dışında (henüz vadesi gelmemiş) çocuğun kendi rengi tam olarak kullanılır.
+                          const chipStyle = dose.taken
+                            ? styles.chipTaken
+                            : isMissedDose
+                            ? styles.chipMissed
+                            : dose.skipped
+                            ? styles.chipSkipped
+                            : isChildInMixedView
+                            ? { backgroundColor: memberColor + "26" }
+                            : styles.chipScheduled;
+                          const chipTextStyle = dose.taken
+                            ? styles.chipTakenText
+                            : isMissedDose
+                            ? styles.chipMissedText
+                            : dose.skipped
+                            ? styles.chipSkippedText
+                            : isChildInMixedView
+                            ? { color: memberColor }
+                            : styles.chipScheduledText;
+
+                          return (
+                            <View key={i} style={[styles.doseChip, chipStyle]}>
+                              <Text style={[styles.doseChipText, chipTextStyle]} numberOfLines={1}>
+                                {dose.taken ? "✓ " : isMissedDose ? "! " : ""}
+                                {selectedMember === "Tümü" && dose.medicine.memberName ? `${dose.medicine.memberName}: ` : ""}
+                                {dose.medicine.medicineName}
+                              </Text>
+                            </View>
+                          );
+                        })}
                         {doses.length > 3 && (
                           <Text style={styles.moreChip}>+{doses.length - 3}</Text>
                         )}
@@ -407,16 +412,18 @@ export default function CalendarScreen() {
                           <View style={styles.doseItemInfo}>
                             {(() => {
                               if (selectedMember !== "Tümü") return null;
-                              const memberColor = getMemberColor(dose.medicine.memberName, allChildren);
+                              const baseColor = getMemberColor(dose.medicine.memberName, allChildren);
+                              // Alınmadıysa kırmızı, alındıysa/beklemedeyse üyenin kendi rengi.
+                              const displayColor = isMissed ? Colors.danger : baseColor;
                               return (
                                 <>
                                   <View style={styles.doseItemMemberRow}>
-                                    <View style={[styles.memberDot, { backgroundColor: memberColor }]} />
-                                    <Text style={[styles.doseItemMemberText, { color: memberColor }]}>
+                                    <View style={[styles.memberDot, { backgroundColor: displayColor }]} />
+                                    <Text style={[styles.doseItemMemberText, { color: displayColor }]}>
                                       {dose.medicine.memberName ?? "Ben"}
                                     </Text>
                                   </View>
-                                  <Text style={[styles.doseItemName, { color: memberColor }, dose.taken && styles.strikethrough]}>
+                                  <Text style={[styles.doseItemName, { color: displayColor }, dose.taken && styles.strikethrough]}>
                                     {dose.medicine.medicineName}
                                   </Text>
                                 </>
