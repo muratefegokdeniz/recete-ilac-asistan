@@ -45,6 +45,16 @@ function isActiveOnDate(med: ActiveMedicine, date: string): boolean {
   return true;
 }
 
+const MISSED_GRACE_MS = 15 * 60 * 1000;
+
+// Gün sonunu beklemez — planlanan saatin üzerinden 15 dakika geçtiyse ve doz
+// alınmadıysa/atlanmadıysa "kaçırıldı" sayılır.
+function isDoseMissed(dateStr: string, time: string, taken: boolean, skipped: boolean): boolean {
+  if (taken || skipped) return false;
+  const scheduled = new Date(`${dateStr}T${time}:00`);
+  return Date.now() - scheduled.getTime() > MISSED_GRACE_MS;
+}
+
 export default function CalendarScreen() {
   const { width } = useWindowDimensions();
   const isWide = Platform.OS === "web" && width >= 900;
@@ -60,10 +70,16 @@ export default function CalendarScreen() {
   const [customChildren, setCustomChildren] = useState<string[]>([]);
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
 
+  const [, forceTick] = useState(0);
+
   useFocusEffect(useCallback(() => {
     loadMonth(viewDate);
     AsyncStorage.getItem("customChildren").then((v) => { if (v) setCustomChildren(JSON.parse(v)); });
     AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
+    // "Kaçırıldı" durumu saate bağlı olduğundan, ekran açıkken de 15 dk eşiğini
+    // geçen dozların kırmızıya dönmesi için periyodik olarak yeniden çizdiriyoruz.
+    const interval = setInterval(() => forceTick((t) => t + 1), 60_000);
+    return () => clearInterval(interval);
   }, [viewDate]));
 
   async function loadMonth(base: Date) {
@@ -269,9 +285,7 @@ export default function CalendarScreen() {
                     const doses = visibleCalData[dateStr] ?? [];
                     const isToday = dateStr === today;
                     const isSelected = dateStr === selectedDate;
-                    const isPast = dateStr < today;
                     const allTaken = doses.length > 0 && doses.every((d) => d.taken);
-                    const hasMissed = isPast && doses.some((d) => !d.taken && !d.skipped);
                     const hasSkipped = doses.some((d) => d.skipped && !d.taken);
 
                     return (
@@ -291,7 +305,7 @@ export default function CalendarScreen() {
                         </View>
 
                         {doses.slice(0, 3).map((dose, i) => {
-                          const isMissedDose = hasMissed && !dose.taken && !dose.skipped;
+                          const isMissedDose = isDoseMissed(dateStr, dose.time, dose.taken, dose.skipped);
                           const isChildInMixedView = selectedMember === "Tümü" && !!dose.medicine.memberName;
                           const memberColor = getMemberColor(dose.medicine.memberName, allChildren);
 
@@ -380,8 +394,7 @@ export default function CalendarScreen() {
               ) : (
                 <View style={styles.doseList}>
                   {selectedDoses.map((dose, i) => {
-                    const isPast = selectedDate < today || (selectedDate === today);
-                    const isMissed = isPast && !dose.taken && !dose.skipped && selectedDate < today;
+                    const isMissed = isDoseMissed(selectedDate, dose.time, dose.taken, dose.skipped);
                     const takeKey = `${dose.medicine.id}_${selectedDate}_${dose.time}`;
                     const skipKey = `${dose.medicine.id}_${selectedDate}_${dose.time}_skip`;
 
