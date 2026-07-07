@@ -122,7 +122,9 @@ export default function ChatScreen() {
       await upsertChatConversation(conv);
       await loadConversations();
     } catch (err) {
-      Alert.alert("Hata", "Yanıt alınamadı. API anahtarınızı kontrol edin.");
+      console.error("[chat] mesaj gönderilemedi:", err);
+      const detail = err instanceof Error ? err.message : String(err);
+      Alert.alert("Hata", `Yanıt alınamadı: ${detail}`);
       setMessages((prev) => prev.filter((m) => m.id !== userMsg.id));
     } finally {
       setLoading(false);

@@ -1,19 +1,35 @@
-import Anthropic from "@anthropic-ai/sdk";
 import { PrescriptionAnalysis, PrescriptionMedicine } from "../types";
+import { supabase } from "./supabase";
 
-const apiKey = process.env.EXPO_PUBLIC_ANTHROPIC_API_KEY ?? "";
-console.log("[Anthropic] API key yüklendi mi:", apiKey ? `Evet (${apiKey.length} karakter, başlangıç: ${apiKey.substring(0, 12)}...)` : "HAYIR - key boş!");
+interface ClaudeResponse {
+  content: { type: string; text?: string }[];
+}
 
-const client = new Anthropic({
-  apiKey,
-  dangerouslyAllowBrowser: true,
-});
+async function callClaude(params: {
+  model: string;
+  max_tokens: number;
+  system?: string;
+  messages: unknown[];
+}): Promise<ClaudeResponse> {
+  const { data, error } = await supabase.functions.invoke("claude-proxy", {
+    body: params,
+  });
+  if (error) {
+    console.error("[callClaude] Edge Function hatası:", error, "context:", (error as any)?.context);
+    throw error;
+  }
+  if (data?.error) {
+    console.error("[callClaude] claude-proxy hata döndü:", data.error);
+    throw new Error(data.error);
+  }
+  return data as ClaudeResponse;
+}
 
 export async function analyzePrescription(
   base64Image: string,
   mimeType: string = "image/jpeg"
 ): Promise<PrescriptionAnalysis> {
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 2048,
     system: `Sen bir eczacı asistanısın. Türkçe reçeteleri analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
@@ -65,7 +81,7 @@ Reçete değilse veya okunamıyorsa boş medicines dizisi ile yanıt ver.`,
   });
 
   const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -93,7 +109,7 @@ export interface MedicineImageAnalysis {
 export async function analyzePrescriptionText(
   text: string
 ): Promise<PrescriptionAnalysis> {
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 2048,
     system: `Sen bir eczacı asistanısın. Kullanıcının yazdığı reçete metnini analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
@@ -130,7 +146,7 @@ Kullanıcının yazdığı ilaç adlarını birebir koru, sadece eksik bilgileri
   });
 
   const text2 =
-    response.content[0].type === "text" ? response.content[0].text : "";
+    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
 
   try {
     const jsonMatch = text2.match(/\{[\s\S]*\}/);
@@ -149,7 +165,7 @@ export async function analyzeMedicineImage(
   mimeType: string = "image/jpeg"
 ): Promise<MedicineImageAnalysis> {
   console.log("[analyzeMedicineImage] base64 uzunluğu:", base64Image?.length ?? 0);
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 1500,
     system: `Sen bir eczacı asistanısın. İlaç görsellerini tanıyıp Türkçe kapsamlı bilgi veriyorsun. Yanıtını JSON formatında ver.`,
@@ -193,7 +209,7 @@ JSON formatında yanıt ver (tüm alanları Türkçe doldur):
   });
 
   const text =
-    response.content[0].type === "text" ? response.content[0].text : "";
+    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -211,7 +227,7 @@ export async function getSkipAdvice(
   medicineName: string,
   reason: string
 ): Promise<string> {
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 512,
     system: `Sen Türkçe konuşan, empatik ve bilgili bir eczacı asistanısın.
@@ -222,11 +238,11 @@ Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
       content: `İlaç adı: ${medicineName}\nAtlama nedeni: ${reason}\n\nBu durumda ne yapmalıyım?`,
     }],
   });
-  return response.content[0].type === "text" ? response.content[0].text : "";
+  return response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
 }
 
 export async function getMedicineInfoByName(name: string): Promise<PrescriptionMedicine> {
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: `Sen bir eczacı asistanısın. Türkçe ilaç bilgisi veriyorsun. Yanıtını JSON formatında ver.`,
@@ -244,7 +260,7 @@ export async function getMedicineInfoByName(name: string): Promise<PrescriptionM
 }`,
     }],
   });
-  const text = response.content[0].type === "text" ? response.content[0].text : "";
+  const text = response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
   try {
     const match = text.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]) as PrescriptionMedicine;
@@ -256,7 +272,7 @@ export async function chatWithAssistant(
   messages: { role: "user" | "assistant"; content: string }[],
   userMessage: string
 ): Promise<string> {
-  const response = await client.messages.create({
+  const response = await callClaude({
     model: "claude-sonnet-4-6",
     max_tokens: 1024,
     system: `Sen Türkçe konuşan, yardımcı ve bilgili bir eczacı asistanısın.
@@ -270,5 +286,5 @@ Yanıtların kısa, net ve Türkçe olsun.`,
     ],
   });
 
-  return response.content[0].type === "text" ? response.content[0].text : "";
+  return response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
 }

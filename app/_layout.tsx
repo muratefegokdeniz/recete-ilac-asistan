@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { ActivityIndicator, View, Platform } from "react-native";
@@ -6,11 +6,14 @@ import { useFonts } from "expo-font";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { Colors } from "../constants/Colors";
+import { getProfile } from "../services/database";
 
 function RootNavigator() {
   const { session, loading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
+  const [profileChecked, setProfileChecked] = useState(false);
+  const [hasProfile, setHasProfile] = useState(false);
 
   useEffect(() => {
     if (Platform.OS === "web") {
@@ -19,17 +22,36 @@ function RootNavigator() {
   }, []);
 
   useEffect(() => {
-    if (loading) return;
+    if (!session) {
+      setProfileChecked(false);
+      setHasProfile(false);
+      return;
+    }
+    getProfile()
+      .then((p) => {
+        setHasProfile(!!p?.fullName);
+        setProfileChecked(true);
+      })
+      .catch(() => {
+        setProfileChecked(true);
+        setHasProfile(false);
+      });
+  }, [session]);
+
+  useEffect(() => {
+    if (loading || (session && !profileChecked)) return;
     const inAuthGroup = segments[0] === "login";
     const inTabs = segments[0] === "(tabs)";
-    if (!session && !inAuthGroup) {
+    const inOnboarding = segments[0] === "onboarding";
+
+    if (!session && !inAuthGroup && !inOnboarding) {
       router.replace("/login");
     } else if (session && inAuthGroup) {
-      router.replace("/(tabs)/home");
-    } else if (session && !inTabs) {
-      router.replace("/(tabs)/home");
+      router.replace(hasProfile ? "/(tabs)/home" : "/onboarding");
+    } else if (session && !inTabs && !inOnboarding) {
+      router.replace(hasProfile ? "/(tabs)/home" : "/onboarding");
     }
-  }, [session, loading, segments]);
+  }, [session, loading, segments, profileChecked, hasProfile]);
 
   if (loading) {
     return (
@@ -45,6 +67,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="onboarding" />
       </Stack>
     </>
   );

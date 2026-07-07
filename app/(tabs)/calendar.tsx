@@ -224,7 +224,7 @@ export default function CalendarScreen() {
                           </Text>
                         </View>
 
-                        {doses.slice(0, 2).map((dose, i) => (
+                        {doses.slice(0, 3).map((dose, i) => (
                           <View
                             key={i}
                             style={[
@@ -249,8 +249,8 @@ export default function CalendarScreen() {
                             </Text>
                           </View>
                         ))}
-                        {doses.length > 2 && (
-                          <Text style={styles.moreChip}>+{doses.length - 2}</Text>
+                        {doses.length > 3 && (
+                          <Text style={styles.moreChip}>+{doses.length - 3}</Text>
                         )}
                       </TouchableOpacity>
                     );
@@ -494,12 +494,12 @@ const styles = StyleSheet.create({
 
   grid: { flexDirection: "row", flexWrap: "wrap" },
   emptyCell: {
-    width: "14.285714%", minHeight: 80,
+    width: "14.285714%", minHeight: 100,
     borderRightWidth: 1, borderBottomWidth: 1, borderColor: Colors.borderLight,
     backgroundColor: Colors.surfaceAlt + "50",
   },
   dayCell: {
-    width: "14.285714%", minHeight: 80, padding: 4,
+    width: "14.285714%", minHeight: 100, padding: 4,
     borderRightWidth: 1, borderBottomWidth: 1, borderColor: Colors.borderLight,
     gap: 3,
   },
