@@ -66,12 +66,14 @@ acil.
 - `_layout.tsx`'teki `hasProfile` kontrolü, artık sadece "profili olmayan eski
   kullanıcılar" (migration senaryosu) için bir fallback olarak kalır.
 
-## İş 2 — Çocuk İlaçlarını Takvimden Ayır
+## İş 2 — Takvimde Aile Üyesi Görünümü ✅ tamamlandı (revize edildi)
 
-- `calendar.tsx`: `getAllActiveMedicines()` sonucu `meds.filter(m => !m.memberName)`
-  ile süzülür — takvimde sadece kullanıcının kendi ("Ben") ilaçları görünür.
-- `active.tsx`'teki mevcut üye sekmesi sistemi (satır ~54, ~235-242) değişmeden kalır;
-  ebeveyn çocuğunun ilaçlarını orada görmeye devam eder — sadece takvimden çıkarılıyor.
+İlk versiyonda çocuk ilaçları takvimden tamamen çıkarılmıştı, ama kullanıcı hem
+karışık hem tekil görünüm istedi. Son hâli: `calendar.tsx`'e "Tümü / Ben / <çocuk adı>"
+üye sekmeleri eklendi. "Tümü" modunda herkesin ilaçları birlikte görünür, her aile
+üyesi ayrı bir renkle (sol kenarlık + isim etiketi) ayırt edilir; "Ben" veya bir
+çocuk seçilince sadece o kişinin ilaçları filtrelenir. Renk ataması `getMemberColor()`
+ile çocuk listesindeki sıraya göre sabit bir paletten yapılıyor.
 
 ## İş 3 — Aşı Kartı (Aşı Takibi)
 

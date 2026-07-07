@@ -3,6 +3,7 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, Platform,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
@@ -14,6 +15,16 @@ import { ActiveMedicine, TakenDose } from "../../types";
 
 const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MONTH_NAMES = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
+
+// "Ben" hariç aile üyelerini birbirinden ayırt etmek için renk paleti — durum
+// renkleriyle (yeşil=alındı, kırmızı=atlandı, teal=primary) çakışmayacak tonlar.
+const MEMBER_COLORS = ["#8B5CF6", "#F59E0B", "#EC4899", "#3B82F6", "#F97316", "#6366F1", "#0EA5E9", "#D946EF"];
+
+function getMemberColor(memberName: string | undefined, children: string[]): string {
+  if (!memberName) return Colors.primary; // "Ben"
+  const idx = children.indexOf(memberName);
+  return MEMBER_COLORS[idx >= 0 ? idx % MEMBER_COLORS.length : 0]!;
+}
 
 interface CalDose {
   medicine: ActiveMedicine;
@@ -45,15 +56,23 @@ export default function CalendarScreen() {
   const [activeMeds, setActiveMeds] = useState<ActiveMedicine[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [selectedMember, setSelectedMember] = useState<string>("Tümü");
+  const [customChildren, setCustomChildren] = useState<string[]>([]);
+  const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
 
-  useFocusEffect(useCallback(() => { loadMonth(viewDate); }, [viewDate]));
+  useFocusEffect(useCallback(() => {
+    loadMonth(viewDate);
+    AsyncStorage.getItem("customChildren").then((v) => { if (v) setCustomChildren(JSON.parse(v)); });
+    AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
+  }, [viewDate]));
 
   async function loadMonth(base: Date) {
     setLoading(true);
     try {
-      // Takvim sadece kullanıcının kendi ilaçlarını gösterir — aile üyelerinin
-      // ilaçları "Aktif İlaçlar" ekranındaki üye sekmelerinden takip edilir.
-      const meds = (await getAllActiveMedicines()).filter((m) => !m.memberName);
+      // Takvim modu ("Tümü"/"Ben"/çocuk adı) fark etmeksizin tüm ilaçları
+      // çekip görüntülemeyi seçime göre aşağıda filtreliyoruz — mod
+      // değiştirmek yeniden sorgu yapmaz.
+      const meds = await getAllActiveMedicines();
       setActiveMeds(meds);
       const year = base.getFullYear();
       const month = base.getMonth();
@@ -138,17 +157,36 @@ export default function CalendarScreen() {
   const totalCells = startPad + lastDay.getDate();
   const totalRows = Math.ceil(totalCells / 7);
 
+  // Üye seçimi: "Tümü" = herkes karışık, "Ben" = sadece kendi ilaçların, yoksa çocuk adı
+  const childNamesFromMeds = activeMeds.filter((m) => m.memberName).map((m) => m.memberName!);
+  const allChildren = Array.from(new Set([...customChildren, ...childNamesFromMeds]))
+    .filter((n) => !hiddenChildren.includes(n));
+  const memberTabs = ["Tümü", "Ben", ...allChildren];
+
+  function matchesSelectedMember(memberName: string | undefined): boolean {
+    if (selectedMember === "Tümü") return true;
+    if (selectedMember === "Ben") return !memberName;
+    return memberName === selectedMember;
+  }
+
+  const visibleActiveMeds = activeMeds.filter((m) => matchesSelectedMember(m.memberName));
+  const visibleCalData: CalData = {};
+  for (const [date, doses] of Object.entries(calData)) {
+    const filtered = doses.filter((d) => matchesSelectedMember(d.medicine.memberName));
+    if (filtered.length > 0) visibleCalData[date] = filtered;
+  }
+
   // Stats
-  const monthDoses = Object.values(calData).flat();
+  const monthDoses = Object.values(visibleCalData).flat();
   const pastDoses = monthDoses.filter((d) => {
-    const dateEntry = Object.entries(calData).find(([, doses]) => doses.includes(d));
+    const dateEntry = Object.entries(visibleCalData).find(([, doses]) => doses.includes(d));
     return dateEntry && dateEntry[0] <= today;
   });
   const takenCount = pastDoses.filter((d) => d.taken).length;
   const skippedCount = pastDoses.filter((d) => d.skipped).length;
   const adherencePct = pastDoses.length > 0 ? Math.round((takenCount / pastDoses.length) * 100) : 0;
 
-  const selectedDoses = calData[selectedDate] ?? [];
+  const selectedDoses = visibleCalData[selectedDate] ?? [];
 
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
@@ -163,6 +201,32 @@ export default function CalendarScreen() {
           <Text style={styles.todayBtnText}>Bugün</Text>
         </TouchableOpacity>
       </View>
+
+      {allChildren.length > 0 && (
+        <ScrollView
+          horizontal showsHorizontalScrollIndicator={false}
+          style={styles.memberRow}
+          contentContainerStyle={styles.memberRowContent}
+        >
+          {memberTabs.map((name) => {
+            const color = name === "Tümü" ? Colors.text : getMemberColor(name === "Ben" ? undefined : name, allChildren);
+            const active = selectedMember === name;
+            return (
+              <TouchableOpacity
+                key={name}
+                style={[styles.memberTab, active && { backgroundColor: color, borderColor: color }]}
+                onPress={() => setSelectedMember(name)}
+                activeOpacity={0.8}
+              >
+                {name !== "Tümü" && name !== "Ben" && (
+                  <View style={[styles.memberDot, { backgroundColor: active ? Colors.textInverse : color }]} />
+                )}
+                <Text style={[styles.memberTabText, active && styles.memberTabTextActive]}>{name}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+      )}
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         <View style={[styles.bentoRow, isWide && styles.bentoRowWide]}>
@@ -202,7 +266,7 @@ export default function CalendarScreen() {
                       return <View key={idx} style={styles.emptyCell} />;
                     }
                     const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(dayNum).padStart(2, "0")}`;
-                    const doses = calData[dateStr] ?? [];
+                    const doses = visibleCalData[dateStr] ?? [];
                     const isToday = dateStr === today;
                     const isSelected = dateStr === selectedDate;
                     const isPast = dateStr < today;
@@ -238,6 +302,10 @@ export default function CalendarScreen() {
                                 : dose.skipped
                                 ? styles.chipSkipped
                                 : styles.chipScheduled,
+                              selectedMember === "Tümü" && {
+                                borderLeftWidth: 2,
+                                borderLeftColor: getMemberColor(dose.medicine.memberName, allChildren),
+                              },
                             ]}
                           >
                             <Text style={[
@@ -247,7 +315,9 @@ export default function CalendarScreen() {
                                 : dose.skipped ? styles.chipSkippedText
                                 : styles.chipScheduledText,
                             ]} numberOfLines={1}>
-                              {dose.taken ? "✓ " : hasMissed && !dose.taken && !dose.skipped ? "! " : ""}{dose.medicine.medicineName}
+                              {dose.taken ? "✓ " : hasMissed && !dose.taken && !dose.skipped ? "! " : ""}
+                              {selectedMember === "Tümü" && dose.medicine.memberName ? `${dose.medicine.memberName}: ` : ""}
+                              {dose.medicine.medicineName}
                             </Text>
                           </View>
                         ))}
@@ -274,7 +344,7 @@ export default function CalendarScreen() {
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Aktif İlaç</Text>
-                <Text style={styles.statValue}>{activeMeds.length}</Text>
+                <Text style={styles.statValue}>{visibleActiveMeds.length}</Text>
               </View>
               <View style={styles.statCard}>
                 <Text style={styles.statLabel}>Atlanan Doz</Text>
@@ -335,6 +405,12 @@ export default function CalendarScreen() {
                             />
                           </View>
                           <View style={styles.doseItemInfo}>
+                            {selectedMember === "Tümü" && (
+                              <View style={styles.doseItemMemberRow}>
+                                <View style={[styles.memberDot, { backgroundColor: getMemberColor(dose.medicine.memberName, allChildren) }]} />
+                                <Text style={styles.doseItemMemberText}>{dose.medicine.memberName ?? "Ben"}</Text>
+                              </View>
+                            )}
                             <Text style={[styles.doseItemName, dose.taken && styles.strikethrough]}>
                               {dose.medicine.medicineName}
                             </Text>
@@ -411,7 +487,7 @@ export default function CalendarScreen() {
                     ? `Harika! Bu ay %${adherencePct} uyum sağladınız. Böyle devam edin.`
                     : adherencePct >= 70
                     ? `Bu ay %${adherencePct} uyum sağlandı. Düzenli alım için hatırlatıcıları kontrol edin.`
-                    : activeMeds.length === 0
+                    : visibleActiveMeds.length === 0
                     ? "Henüz aktif ilaç eklenmedi. Takip sekmesinden ilaç ekleyebilirsiniz."
                     : `Bu ay %${adherencePct} uyum sağlandı. Daha düzenli olmaya çalışın.`}
                 </Text>
@@ -427,7 +503,7 @@ export default function CalendarScreen() {
                   </View>
                   <View style={styles.insightStatDivider} />
                   <View style={styles.insightStat}>
-                    <Text style={styles.insightStatVal}>{activeMeds.length}</Text>
+                    <Text style={styles.insightStatVal}>{visibleActiveMeds.length}</Text>
                     <Text style={styles.insightStatLbl}>Aktif İlaç</Text>
                   </View>
                 </View>
@@ -455,6 +531,17 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primaryLight, borderWidth: 1, borderColor: Colors.primary + "40",
   },
   todayBtnText: { fontSize: 13, fontWeight: "700", color: Colors.primary },
+
+  memberRow: { flexGrow: 0, backgroundColor: Colors.surface, borderBottomWidth: 1, borderBottomColor: Colors.border },
+  memberRowContent: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
+  memberTab: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full,
+    backgroundColor: Colors.surfaceAlt, borderWidth: 1, borderColor: Colors.border,
+  },
+  memberDot: { width: 8, height: 8, borderRadius: 4 },
+  memberTabText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
+  memberTabTextActive: { color: Colors.textInverse },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 16, paddingBottom: 40 },
@@ -574,6 +661,8 @@ const styles = StyleSheet.create({
     alignItems: "center", justifyContent: "center", flexShrink: 0,
   },
   doseItemInfo: { flex: 1 },
+  doseItemMemberRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
+  doseItemMemberText: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 0.3 },
   doseItemName: { fontSize: 14, fontWeight: "700", color: Colors.text },
   strikethrough: { textDecorationLine: "line-through", color: Colors.textMuted },
   doseItemSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
