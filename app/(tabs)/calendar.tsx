@@ -405,15 +405,28 @@ export default function CalendarScreen() {
                             />
                           </View>
                           <View style={styles.doseItemInfo}>
-                            {selectedMember === "Tümü" && (
-                              <View style={styles.doseItemMemberRow}>
-                                <View style={[styles.memberDot, { backgroundColor: getMemberColor(dose.medicine.memberName, allChildren) }]} />
-                                <Text style={styles.doseItemMemberText}>{dose.medicine.memberName ?? "Ben"}</Text>
-                              </View>
+                            {(() => {
+                              if (selectedMember !== "Tümü") return null;
+                              const memberColor = getMemberColor(dose.medicine.memberName, allChildren);
+                              return (
+                                <>
+                                  <View style={styles.doseItemMemberRow}>
+                                    <View style={[styles.memberDot, { backgroundColor: memberColor }]} />
+                                    <Text style={[styles.doseItemMemberText, { color: memberColor }]}>
+                                      {dose.medicine.memberName ?? "Ben"}
+                                    </Text>
+                                  </View>
+                                  <Text style={[styles.doseItemName, { color: memberColor }, dose.taken && styles.strikethrough]}>
+                                    {dose.medicine.medicineName}
+                                  </Text>
+                                </>
+                              );
+                            })()}
+                            {selectedMember !== "Tümü" && (
+                              <Text style={[styles.doseItemName, dose.taken && styles.strikethrough]}>
+                                {dose.medicine.medicineName}
+                              </Text>
                             )}
-                            <Text style={[styles.doseItemName, dose.taken && styles.strikethrough]}>
-                              {dose.medicine.medicineName}
-                            </Text>
                             <Text style={styles.doseItemSub}>
                               {dose.medicine.dosage}
                               {dose.medicine.mealTiming ? ` · ${dose.medicine.mealTiming}` : ""}
