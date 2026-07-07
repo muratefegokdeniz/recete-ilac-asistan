@@ -55,3 +55,31 @@ export async function cancelReminders(notificationIds: string[]): Promise<void> 
     await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
   }
 }
+
+// Aşı vade tarihi tek seferlik olduğu için DAILY değil DATE tetikleyicisi kullanır.
+export async function scheduleVaccineReminder(
+  childName: string,
+  vaccineName: string,
+  dueDate: string // "YYYY-MM-DD"
+): Promise<string | null> {
+  if (Platform.OS === "web") return null;
+  const date = new Date(`${dueDate}T09:00:00`);
+  if (date.getTime() <= Date.now()) return null; // geçmiş tarih için bildirim planlanmaz
+  try {
+    const id = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "💉 Aşı Zamanı",
+        body: `${childName} için ${vaccineName} aşısının zamanı geldi.`,
+        sound: true,
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DATE,
+        date,
+      },
+    });
+    return id;
+  } catch (e) {
+    console.error("Aşı bildirimi zamanlanamadı:", e);
+    return null;
+  }
+}

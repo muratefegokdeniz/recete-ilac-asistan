@@ -88,3 +88,13 @@ export async function cancelReminders(notificationIds: string[]): Promise<void> 
   const list = loadReminders().filter((r) => !notificationIds.includes(r.id));
   saveReminders(list);
 }
+
+// Web'de aylar sonrasına setTimeout kurmak sayfa yenilemelerinde güvenilir
+// olmadığından aşı bildirimleri şimdilik sadece native'de planlanıyor.
+export async function scheduleVaccineReminder(
+  _childName: string,
+  _vaccineName: string,
+  _dueDate: string
+): Promise<string | null> {
+  return null;
+}

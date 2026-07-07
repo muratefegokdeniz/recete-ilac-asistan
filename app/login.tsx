@@ -40,6 +40,22 @@ export default function LoginScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Eski kullanıcı fallback: session var ama profil yok (kayıt akışı bu değişiklikten
+  // önce yarım kalmış) — aynı onboarding wizard'ını burada göster.
+  React.useEffect(() => {
+    if (!session) return;
+    getProfile()
+      .then((p) => {
+        if (!p?.fullName) {
+          setDraft(p ?? {});
+          setStep(0);
+          setSaveError(null);
+          setMode("onboarding");
+        }
+      })
+      .catch(() => {});
+  }, [session]);
+
   // ── Auth ──────────────────────────────────────────────────────────────────
 
   async function handleSubmit() {

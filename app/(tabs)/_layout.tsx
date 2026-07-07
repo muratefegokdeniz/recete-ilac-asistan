@@ -12,6 +12,7 @@ const TAB_ITEMS = [
   { name: "cabinet",       icon: "medical-services" as keyof typeof MaterialIcons.glyphMap },
   { name: "active",        icon: "alarm"            as keyof typeof MaterialIcons.glyphMap },
   { name: "calendar",      icon: "calendar-month"   as keyof typeof MaterialIcons.glyphMap },
+  { name: "vaccines",      icon: "vaccines"         as keyof typeof MaterialIcons.glyphMap },
   { name: "chat",          icon: "chat"             as keyof typeof MaterialIcons.glyphMap },
   { name: "profile",       icon: "person"           as keyof typeof MaterialIcons.glyphMap },
 ];
@@ -108,6 +109,15 @@ const tabScreens = (
         title: "Takvim",
         tabBarIcon: ({ focused, color }) => (
           <TabIcon name="calendar-month" focused={focused} color={color} />
+        ),
+      }}
+    />
+    <Tabs.Screen
+      name="vaccines"
+      options={{
+        title: "Aşı Kartı",
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon name="vaccines" focused={focused} color={color} />
         ),
       }}
     />

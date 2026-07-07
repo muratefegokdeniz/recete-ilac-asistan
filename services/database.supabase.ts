@@ -1,5 +1,6 @@
 import { supabase } from "./supabase";
-import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage } from "../types";
+import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage, ChildVaccine } from "../types";
+import { VACCINE_SCHEDULE } from "../constants/VaccineSchedule";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,18 @@ function rowToTakenDose(r: any): TakenDose {
     scheduledTime: r.scheduled_time,
     takenAt: r.taken_at ?? undefined,
     skipped: r.skipped ?? false,
+  };
+}
+
+function rowToChildVaccine(r: any): ChildVaccine {
+  return {
+    id: r.id,
+    childName: r.child_name,
+    vaccineName: r.vaccine_name,
+    recommendedAge: r.recommended_age,
+    dueDate: r.due_date,
+    completedAt: r.completed_at ?? undefined,
+    notificationId: r.notification_id ?? undefined,
   };
 }
 
@@ -359,5 +372,62 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     allergies: profile.allergies ?? null,
     updated_at: new Date().toISOString(),
   });
+  if (error) throw error;
+}
+
+// ─── Child Vaccines (Aşı Kartı) ─────────────────────────────────────────────
+
+export async function getAllChildVaccines(): Promise<ChildVaccine[]> {
+  const userId = await getUserId();
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("child_vaccines")
+    .select("*")
+    .eq("user_id", userId)
+    .order("due_date", { ascending: true });
+  if (error) throw error;
+  return (data ?? []).map(rowToChildVaccine);
+}
+
+export async function getChildVaccines(childName: string): Promise<ChildVaccine[]> {
+  return (await getAllChildVaccines()).filter((v) => v.childName === childName);
+}
+
+// Bir çocuk için standart aşı takvimini doğum tarihine göre bir kerede oluşturur.
+export async function createVaccineCardForChild(childName: string, birthDate: string): Promise<void> {
+  const userId = await getUserId();
+  if (!userId) throw new Error("Giriş yapılmamış");
+  const birth = new Date(birthDate + "T00:00:00");
+  const rows = VACCINE_SCHEDULE.map((item, i) => {
+    const due = new Date(birth);
+    due.setMonth(due.getMonth() + item.ageMonths);
+    return {
+      id: `vac_${Date.now()}_${i}_${Math.random().toString(36).slice(2, 8)}`,
+      user_id: userId,
+      child_name: childName,
+      vaccine_name: item.vaccineName,
+      recommended_age: item.recommendedAge,
+      due_date: due.toISOString().split("T")[0],
+      completed_at: null,
+      notification_id: null,
+    };
+  });
+  const { error } = await supabase.from("child_vaccines").insert(rows);
+  if (error) throw error;
+}
+
+export async function setVaccineCompleted(id: string, completed: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("child_vaccines")
+    .update({ completed_at: completed ? new Date().toISOString() : null })
+    .eq("id", id);
+  if (error) throw error;
+}
+
+export async function setVaccineNotificationId(id: string, notificationId: string | null): Promise<void> {
+  const { error } = await supabase
+    .from("child_vaccines")
+    .update({ notification_id: notificationId })
+    .eq("id", id);
   if (error) throw error;
 }

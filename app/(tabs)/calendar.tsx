@@ -51,7 +51,9 @@ export default function CalendarScreen() {
   async function loadMonth(base: Date) {
     setLoading(true);
     try {
-      const meds = await getAllActiveMedicines();
+      // Takvim sadece kullanıcının kendi ilaçlarını gösterir — aile üyelerinin
+      // ilaçları "Aktif İlaçlar" ekranındaki üye sekmelerinden takip edilir.
+      const meds = (await getAllActiveMedicines()).filter((m) => !m.memberName);
       setActiveMeds(meds);
       const year = base.getFullYear();
       const month = base.getMonth();

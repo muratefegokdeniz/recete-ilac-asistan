@@ -67,3 +67,13 @@ export interface ChatMessage {
   content: string;
   timestamp: string;
 }
+
+export interface ChildVaccine {
+  id: string;
+  childName: string;
+  vaccineName: string;
+  recommendedAge: string;
+  dueDate: string;
+  completedAt?: string;
+  notificationId?: string;
+}

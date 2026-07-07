@@ -38,7 +38,7 @@ olarak ele alınacak, teknik sprint'in parçası değil.
 
 ---
 
-## İş 0 — API Key'i Backend'e Taşı (öncelik: en yüksek, güvenlik) ✅ kod tarafı bitti
+## İş 0 — API Key'i Backend'e Taşı (öncelik: en yüksek, güvenlik) ✅ tamamlandı, canlıda doğrulandı
 
 **Neden önce bu:** Diğer her şey bu API'nin üzerine inşa edilecek; ayrıca mevcut sızıntı
 acil.

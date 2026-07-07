@@ -41,16 +41,18 @@ function RootNavigator() {
   useEffect(() => {
     if (loading || (session && !profileChecked)) return;
     const inAuthGroup = segments[0] === "login";
-    const inTabs = segments[0] === "(tabs)";
-    const inOnboarding = segments[0] === "onboarding";
 
-    if (!session && !inAuthGroup && !inOnboarding) {
-      router.replace("/login");
-    } else if (session && inAuthGroup) {
-      router.replace(hasProfile ? "/(tabs)/home" : "/onboarding");
-    } else if (session && !inTabs && !inOnboarding) {
-      router.replace(hasProfile ? "/(tabs)/home" : "/onboarding");
+    if (!session) {
+      if (!inAuthGroup) router.replace("/login");
+      return;
     }
+    if (!hasProfile) {
+      // Profili olmayan kullanıcılar /login'de kalır — login.tsx bu durumu
+      // kendi içinde algılayıp onboarding wizard'ını gösterir.
+      if (!inAuthGroup) router.replace("/login");
+      return;
+    }
+    if (inAuthGroup) router.replace("/(tabs)/home");
   }, [session, loading, segments, profileChecked, hasProfile]);
 
   if (loading) {
@@ -67,7 +69,6 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
-        <Stack.Screen name="onboarding" />
       </Stack>
     </>
   );
