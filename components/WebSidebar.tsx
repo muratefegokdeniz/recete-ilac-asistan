@@ -16,7 +16,6 @@ const NAV_ITEMS: {
   { label: "Dolabım", route: "/(tabs)/cabinet", icon: "medical-services" },
   { label: "Takip", route: "/(tabs)/active", icon: "alarm" },
   { label: "Takvim", route: "/(tabs)/calendar", icon: "calendar-month" },
-  { label: "Aşı Kartı", route: "/(tabs)/vaccines", icon: "vaccines" },
   { label: "Asistan", route: "/(tabs)/chat", icon: "chat" },
   { label: "Profil", route: "/(tabs)/profile", icon: "person" },
 ];

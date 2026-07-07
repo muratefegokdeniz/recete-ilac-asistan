@@ -85,9 +85,9 @@ ile çocuk listesindeki sıraya göre sabit bir paletten yapılıyor.
 - `services/database.supabase.ts`'e `getChildVaccines(childName)`,
   `markVaccineDone(id)`, `getAllChildVaccines()` eklenir — mevcut `rowToX` /
   CRUD paternleri (ör. `getAllActiveMedicines`, `markDoseTaken`) birebir takip edilir.
-- Yeni ekran `app/(tabs)/vaccines.tsx` (veya `active.tsx`'teki üye sekmesi paternini
-  paylaşan bir alt-sekme): çocuk başına aşı listesi, tik kutuları, vade tarihi
-  yaklaşınca bildirim.
+- Aşı kartı ayrı bir sekme değil, **Profil ekranının içinde bir bölüm** olarak
+  gösteriliyor ("Aşı Kartları" — çocuk sekmeleri + aşı listesi, tik kutuları,
+  vade tarihi yaklaşınca bildirim). Ayrı `vaccines.tsx` sekmesi kaldırıldı.
 - Bildirimler: `services/notifications.ts`'teki `scheduleDailyReminder` paterni referans
   alınır ama aşı tarihleri tekrar eden değil tek seferlik olduğu için
   `Notifications.SchedulableTriggerInputTypes.DATE` tetikleyicisiyle yeni bir

@@ -3,18 +3,23 @@ import {
   View, Text, StyleSheet, TouchableOpacity,
   ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Ionicons } from "@expo/vector-icons";
+import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
-import { Colors, Radius } from "../../constants/Colors";
-import { Button, ConfirmModal } from "../../components/ui";
+import { Colors, Radius, Shadows } from "../../constants/Colors";
+import { Button, ConfirmModal, EmptyState, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { useAuth } from "../../context/AuthContext";
 import {
   getProfile, saveProfile, UserProfile,
   getFamilyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
+  getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
+  setVaccineCompleted, setVaccineNotificationId,
 } from "../../services/database";
-import { FamilyMember } from "../../types";
+import { scheduleVaccineReminder } from "../../services/notifications";
+import { FamilyMember, ChildVaccine } from "../../types";
+import { fallbackMemberColor } from "../../constants/MemberColors";
 
 const GENDER_OPTIONS = ["Erkek", "Kadın", "Belirtmek istemiyorum"];
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyorum"];
@@ -31,10 +36,30 @@ export default function ProfileScreen() {
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
   const [showAddChild, setShowAddChild] = useState(false);
 
+  // Aşı kartı
+  const [childNamesFromMeds, setChildNamesFromMeds] = useState<string[]>([]);
+  const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
+  const [selectedVaccineChild, setSelectedVaccineChild] = useState<string | null>(null);
+  const [vaccines, setVaccines] = useState<ChildVaccine[]>([]);
+  const [vaccineLoading, setVaccineLoading] = useState(false);
+  const [showBirthDateModal, setShowBirthDateModal] = useState(false);
+  const [birthDate, setBirthDate] = useState("");
+  const [creatingCard, setCreatingCard] = useState(false);
+  const [createCardError, setCreateCardError] = useState<string | null>(null);
+  const [togglingVaccineId, setTogglingVaccineId] = useState<string | null>(null);
+
+  const vaccineChildren = Array.from(new Set([...familyMembers.map((m) => m.name), ...childNamesFromMeds]))
+    .filter((n) => !hiddenChildren.includes(n));
+
+  function colorForChild(name: string): string {
+    return familyMembers.find((m) => m.name === name)?.color ?? fallbackMemberColor(name, vaccineChildren);
+  }
+
   useFocusEffect(
     useCallback(() => {
       getProfile().then((p) => { if (p) setProfile(p); }).catch(() => {});
       loadFamilyMembers();
+      loadVaccineChildren();
     }, [])
   );
 
@@ -42,6 +67,76 @@ export default function ProfileScreen() {
     try {
       setFamilyMembers(await getFamilyMembers());
     } catch (e) { console.error(e); }
+  }
+
+  async function loadVaccineChildren() {
+    try {
+      const [members, meds, hidden] = await Promise.all([
+        getFamilyMembers(),
+        getAllActiveMedicines(),
+        AsyncStorage.getItem("hiddenChildren"),
+      ]);
+      const fromMeds = meds.filter((m) => m.memberName).map((m) => m.memberName!);
+      const hiddenList: string[] = hidden ? JSON.parse(hidden) : [];
+      setChildNamesFromMeds(fromMeds);
+      setHiddenChildren(hiddenList);
+
+      const memberNames = members.map((m) => m.name);
+      const children = Array.from(new Set([...memberNames, ...fromMeds])).filter((n) => !hiddenList.includes(n));
+      setSelectedVaccineChild((prev) => {
+        const next = prev && children.includes(prev) ? prev : (children[0] ?? null);
+        if (next) getChildVaccines(next).then(setVaccines);
+        else setVaccines([]);
+        return next;
+      });
+    } catch (e) { console.error(e); }
+  }
+
+  async function selectVaccineChild(name: string) {
+    setSelectedVaccineChild(name);
+    setVaccineLoading(true);
+    try {
+      setVaccines(await getChildVaccines(name));
+    } finally {
+      setVaccineLoading(false);
+    }
+  }
+
+  async function handleCreateVaccineCard() {
+    if (!selectedVaccineChild || !birthDate) {
+      setCreateCardError("Doğum tarihi gereklidir.");
+      return;
+    }
+    setCreatingCard(true);
+    setCreateCardError(null);
+    try {
+      await createVaccineCardForChild(selectedVaccineChild, birthDate);
+      setVaccines(await getChildVaccines(selectedVaccineChild));
+      setShowBirthDateModal(false);
+      setBirthDate("");
+    } catch (e: any) {
+      setCreateCardError(e?.message ?? "Aşı kartı oluşturulamadı.");
+    } finally {
+      setCreatingCard(false);
+    }
+  }
+
+  async function handleToggleVaccine(vaccine: ChildVaccine) {
+    if (!selectedVaccineChild) return;
+    setTogglingVaccineId(vaccine.id);
+    try {
+      const nowCompleted = !vaccine.completedAt;
+      await setVaccineCompleted(vaccine.id, nowCompleted);
+      if (nowCompleted && vaccine.notificationId) {
+        await setVaccineNotificationId(vaccine.id, null);
+      } else if (!nowCompleted) {
+        const notifId = await scheduleVaccineReminder(selectedVaccineChild, vaccine.vaccineName, vaccine.dueDate);
+        if (notifId) await setVaccineNotificationId(vaccine.id, notifId);
+      }
+      setVaccines(await getChildVaccines(selectedVaccineChild));
+    } finally {
+      setTogglingVaccineId(null);
+    }
   }
 
   function openEdit() {
@@ -151,11 +246,93 @@ export default function ProfileScreen() {
           )}
         </View>
 
+        {/* Aşı Kartları */}
+        {vaccineChildren.length > 0 && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Aşı Kartları</Text>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.vaccineChildRow}>
+              {vaccineChildren.map((name) => {
+                const color = colorForChild(name);
+                const active = selectedVaccineChild === name;
+                return (
+                  <TouchableOpacity
+                    key={name}
+                    style={[styles.vaccineChildTab, active && { backgroundColor: color, borderColor: color }]}
+                    onPress={() => selectVaccineChild(name)}
+                    activeOpacity={0.8}
+                  >
+                    <View style={[styles.vaccineChildDot, { backgroundColor: active ? Colors.textInverse : color }]} />
+                    <Text style={[styles.vaccineChildTabText, active && styles.vaccineChildTabTextActive]}>{name}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
+            {vaccineLoading ? (
+              <ActivityIndicator color={Colors.primary} style={{ marginVertical: 20 }} />
+            ) : vaccines.length === 0 ? (
+              <EmptyState
+                icon={<MaterialIcons name="vaccines" size={36} color={Colors.textMuted} />}
+                title={`${selectedVaccineChild} için Aşı Kartı Yok`}
+                description="Standart aşı takvimini oluşturmak için doğum tarihini gir."
+                action={{ label: "Aşı Kartı Oluştur", onPress: () => setShowBirthDateModal(true) }}
+              />
+            ) : (
+              <View style={{ gap: 10, marginTop: 8 }}>
+                {vaccines.map((v) => {
+                  const today = new Date().toISOString().split("T")[0]!;
+                  const overdue = !v.completedAt && v.dueDate < today;
+                  return (
+                    <View key={v.id} style={styles.vaccineCard}>
+                      <TouchableOpacity
+                        style={[styles.vaccineCheckbox, v.completedAt && styles.vaccineCheckboxDone]}
+                        onPress={() => handleToggleVaccine(v)}
+                        disabled={togglingVaccineId === v.id}
+                        activeOpacity={0.75}
+                      >
+                        {togglingVaccineId === v.id ? (
+                          <ActivityIndicator size="small" color={v.completedAt ? "white" : Colors.primary} />
+                        ) : v.completedAt ? (
+                          <Ionicons name="checkmark" size={16} color="white" />
+                        ) : null}
+                      </TouchableOpacity>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.vaccineName}>{v.vaccineName}</Text>
+                        <Text style={styles.vaccineAge}>{v.recommendedAge}</Text>
+                        <Text style={[styles.vaccineDue, overdue && styles.vaccineDueOverdue]}>
+                          {v.completedAt ? "Tamamlandı" : overdue ? `Vadesi geçti · ${v.dueDate}` : `Vade: ${v.dueDate}`}
+                        </Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        )}
+
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
           <Text style={styles.signOutText}>Çıkış Yap</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <Modal visible={showBirthDateModal} transparent animationType="fade" onRequestClose={() => setShowBirthDateModal(false)}>
+        <View style={styles.vaccineModalOverlay}>
+          <View style={styles.vaccineModalCard}>
+            <Text style={styles.modalTitle}>{selectedVaccineChild} için Doğum Tarihi</Text>
+            <DatePickerField label="Doğum Tarihi" value={birthDate} onChange={setBirthDate} placeholder="Doğum tarihini seç" />
+            {createCardError && <Text style={styles.errorText}>{createCardError}</Text>}
+            <View style={styles.vaccineModalButtons}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setShowBirthDateModal(false)} disabled={creatingCard}>
+                <Text style={styles.modalCancelText}>İptal</Text>
+              </TouchableOpacity>
+              <Button title="Oluştur" onPress={handleCreateVaccineCard} loading={creatingCard} style={{ flex: 1 }} />
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Edit Modal */}
       <Modal visible={showEdit} animationType="slide" presentationStyle="pageSheet">
@@ -417,4 +594,36 @@ const styles = StyleSheet.create({
     padding: 12, borderWidth: 1, borderColor: Colors.danger + "30",
   },
   errorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
+  // Aşı Kartları
+  vaccineChildRow: { gap: 8, paddingBottom: 12 },
+  vaccineChildTab: {
+    flexDirection: "row", alignItems: "center", gap: 6,
+    paddingHorizontal: 14, paddingVertical: 9, borderRadius: Radius.full,
+    backgroundColor: Colors.background, borderWidth: 1, borderColor: Colors.border,
+  },
+  vaccineChildDot: { width: 8, height: 8, borderRadius: 4 },
+  vaccineChildTabText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
+  vaccineChildTabTextActive: { color: Colors.textInverse },
+
+  vaccineCard: {
+    flexDirection: "row", gap: 12, alignItems: "flex-start",
+    backgroundColor: Colors.background, borderRadius: Radius.lg, padding: 14,
+    borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
+  },
+  vaccineCheckbox: {
+    width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: Colors.border,
+    alignItems: "center", justifyContent: "center", marginTop: 2,
+  },
+  vaccineCheckboxDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
+  vaccineName: { fontSize: 14, fontWeight: "700", color: Colors.text },
+  vaccineAge: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  vaccineDue: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
+  vaccineDueOverdue: { color: Colors.danger, fontWeight: "700" },
+
+  vaccineModalOverlay: { flex: 1, backgroundColor: "rgba(0,0,0,0.4)", alignItems: "center", justifyContent: "center", padding: 24 },
+  vaccineModalCard: { width: "100%", maxWidth: 420, backgroundColor: Colors.surface, borderRadius: Radius.xl, padding: 20, gap: 12 },
+  vaccineModalButtons: { flexDirection: "row", gap: 12, marginTop: 8 },
+  modalCancelBtn: { paddingHorizontal: 18, paddingVertical: 14, borderRadius: Radius.md, borderWidth: 1.5, borderColor: Colors.border, alignItems: "center", justifyContent: "center" },
+  modalCancelText: { fontSize: 15, fontWeight: "600", color: Colors.textSecondary },
 });
