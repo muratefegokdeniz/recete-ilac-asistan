@@ -95,7 +95,32 @@ ile çocuk listesindeki sıraya göre sabit bir paletten yapılıyor.
 - Ebeveyn kendi çocuklarının aşı kartını görebilir (zaten `active.tsx`'teki
   `selectedMember` mantığıyla aynı üye listesi kullanılır).
 
-## İş 4 — Çocuk Girişi (Aile Bağlantılı, Onaylı)
+## İş 4 — Çocuk Girişi (Aile Bağlantılı, Onaylı) ✅ tamamlandı
+
+Aşağıdaki tasarım uygulandı:
+- `child_link_requests` tablosu (id, parent_user_id, child_display_name, device_id, status, created_at).
+- `family-link-request` Edge Function: çocuk annesinin email+şifresini gönderir,
+  fonksiyon bunu geçici olarak doğrular (session hiç geri dönmez), doğruysa
+  annenin kendi RLS yetkisiyle `pending` bir istek satırı oluşturur.
+- `family-link-status` Edge Function: çocuk cihazı `requestId`+`deviceId` ile
+  durumu sorar (service_role, ama sadece eşleşen satırı döner).
+- `child-data` Edge Function: onaylı bağlantı için ilaç/aşı verisini okur ve
+  doz/aşı işaretleme yazar (service_role, ama sadece o çocuğun `member_name`/
+  `child_name` etiketli kayıtlarıyla sınırlı, ilaç sahipliği her yazımda
+  doğrulanıyor).
+- `login.tsx`'e "Aileme Bağlı Gir" modu ve onay bekleme ekranı eklendi
+  (4 saniyede bir durum kontrolü).
+- `app/child-home.tsx`: çocuğun kısıtlı ekranı — sadece kendi ilaçları (al/atla)
+  ve aşı kartı, cihazında yerel bildirim planlama, ödeme/ayar ekranlarına
+  hiç erişim yok.
+- `_layout.tsx`: gerçek oturum yoksa onaylı çocuk oturumu var mı kontrol edip
+  `/child-home`'a yönlendiriyor.
+- `profile.tsx`'e "Bekleyen Bağlantı İstekleri" bölümü eklendi — anne
+  onaylayabilir/reddedebilir.
+
+**Kalan (kullanıcı tarafında):** `child_link_requests` tablosu SQL'i çalıştırılmalı,
+yeni `SUPABASE_SERVICE_ROLE_KEY` secret'ı eklenmeli, 3 yeni Edge Function
+(`family-link-request`, `family-link-status`, `child-data`) deploy edilmeli.
 
 Yeni tablolar:
 - `family_link_requests`: `id, parent_user_id, child_display_name, device_id, status

@@ -18,6 +18,16 @@ CREATE TABLE public.active_medicines (
   CONSTRAINT active_medicines_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id),
   CONSTRAINT active_medicines_medicine_id_fkey FOREIGN KEY (medicine_id) REFERENCES public.medicines(id)
 );
+CREATE TABLE public.child_link_requests (
+  id text NOT NULL,
+  parent_user_id uuid NOT NULL,
+  child_display_name text NOT NULL,
+  device_id text NOT NULL,
+  status text NOT NULL DEFAULT 'pending'::text,
+  created_at timestamp with time zone NOT NULL DEFAULT now(),
+  CONSTRAINT child_link_requests_pkey PRIMARY KEY (id),
+  CONSTRAINT child_link_requests_parent_user_id_fkey FOREIGN KEY (parent_user_id) REFERENCES auth.users(id)
+);
 CREATE TABLE public.family_members (
   id text NOT NULL,
   user_id uuid NOT NULL,

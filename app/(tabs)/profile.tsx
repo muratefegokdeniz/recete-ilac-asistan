@@ -16,6 +16,7 @@ import {
   getFamilyMembers, addFamilyMember, updateFamilyMember, deleteFamilyMember,
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
   setVaccineCompleted, setVaccineNotificationId,
+  getPendingChildLinkRequests, respondToChildLinkRequest, ChildLinkRequest,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
@@ -35,6 +36,8 @@ export default function ProfileScreen() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
   const [showAddChild, setShowAddChild] = useState(false);
+  const [pendingRequests, setPendingRequests] = useState<ChildLinkRequest[]>([]);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   // Aşı kartı
   const [childNamesFromMeds, setChildNamesFromMeds] = useState<string[]>([]);
@@ -60,6 +63,7 @@ export default function ProfileScreen() {
       getProfile().then((p) => { if (p) setProfile(p); }).catch(() => {});
       loadFamilyMembers();
       loadVaccineChildren();
+      loadPendingRequests();
     }, [])
   );
 
@@ -67,6 +71,22 @@ export default function ProfileScreen() {
     try {
       setFamilyMembers(await getFamilyMembers());
     } catch (e) { console.error(e); }
+  }
+
+  async function loadPendingRequests() {
+    try {
+      setPendingRequests(await getPendingChildLinkRequests());
+    } catch (e) { console.error(e); }
+  }
+
+  async function handleRespond(id: string, approve: boolean) {
+    setRespondingId(id);
+    try {
+      await respondToChildLinkRequest(id, approve);
+      await loadPendingRequests();
+    } catch (e) { console.error(e); } finally {
+      setRespondingId(null);
+    }
   }
 
   async function loadVaccineChildren() {
@@ -185,6 +205,39 @@ export default function ProfileScreen() {
           <Text style={styles.name}>{profile.fullName || "İsim girilmedi"}</Text>
           <Text style={styles.email}>{user?.email}</Text>
         </View>
+
+        {/* Bekleyen Çocuk Girişi İstekleri */}
+        {pendingRequests.length > 0 && (
+          <View style={[styles.section, styles.pendingSection]}>
+            <Text style={styles.sectionTitle}>Bekleyen Bağlantı İstekleri</Text>
+            {pendingRequests.map((req) => (
+              <View key={req.id} style={styles.pendingRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.pendingName}>{req.childDisplayName}</Text>
+                  <Text style={styles.pendingSub}>Aileme bağlı girmek istiyor</Text>
+                </View>
+                <View style={styles.pendingActions}>
+                  <TouchableOpacity
+                    style={styles.pendingDenyBtn}
+                    onPress={() => handleRespond(req.id, false)}
+                    disabled={respondingId === req.id}
+                  >
+                    <Text style={styles.pendingDenyText}>Reddet</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.pendingApproveBtn}
+                    onPress={() => handleRespond(req.id, true)}
+                    disabled={respondingId === req.id}
+                  >
+                    {respondingId === req.id
+                      ? <ActivityIndicator size="small" color="white" />
+                      : <Text style={styles.pendingApproveText}>Onayla</Text>}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ))}
+          </View>
+        )}
 
         {/* Kişisel Bilgiler */}
         <View style={styles.section}>
@@ -594,6 +647,20 @@ const styles = StyleSheet.create({
     padding: 12, borderWidth: 1, borderColor: Colors.danger + "30",
   },
   errorText: { flex: 1, fontSize: 13, color: Colors.danger, lineHeight: 18 },
+
+  // Bekleyen bağlantı istekleri
+  pendingSection: { borderWidth: 1.5, borderColor: Colors.primary + "40" },
+  pendingRow: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border,
+  },
+  pendingName: { fontSize: 15, fontWeight: "700", color: Colors.text },
+  pendingSub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  pendingActions: { flexDirection: "row", gap: 8 },
+  pendingDenyBtn: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
+  pendingDenyText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
+  pendingApproveBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.md, backgroundColor: Colors.primary, minWidth: 70, alignItems: "center" },
+  pendingApproveText: { fontSize: 13, fontWeight: "700", color: "white" },
 
   // Aşı Kartları
   vaccineChildRow: { gap: 8, paddingBottom: 12 },

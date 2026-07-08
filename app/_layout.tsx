@@ -7,6 +7,7 @@ import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "../context/AuthContext";
 import { Colors } from "../constants/Colors";
 import { getProfile } from "../services/database";
+import { getChildSession } from "../services/childAuth";
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -40,19 +41,35 @@ function RootNavigator() {
 
   useEffect(() => {
     if (loading || (session && !profileChecked)) return;
-    const inAuthGroup = segments[0] === "login";
+    let cancelled = false;
 
-    if (!session) {
-      if (!inAuthGroup) router.replace("/login");
-      return;
-    }
-    if (!hasProfile) {
-      // Profili olmayan kullanıcılar /login'de kalır — login.tsx bu durumu
-      // kendi içinde algılayıp onboarding wizard'ını gösterir.
-      if (!inAuthGroup) router.replace("/login");
-      return;
-    }
-    if (inAuthGroup) router.replace("/(tabs)/home");
+    (async () => {
+      const inAuthGroup = segments[0] === "login";
+      const inChildHome = segments[0] === "child-home";
+
+      if (!session) {
+        // Gerçek bir ebeveyn oturumu yoksa, güncel bir çocuk oturumu var mı bak
+        // (her navigasyonda tazeden okunur — çıkış yapınca eski durumda takılıp
+        // kalmaz).
+        const childSession = await getChildSession();
+        if (cancelled) return;
+        if (childSession) {
+          if (!inChildHome) router.replace("/child-home");
+          return;
+        }
+        if (!inAuthGroup) router.replace("/login");
+        return;
+      }
+      if (!hasProfile) {
+        // Profili olmayan kullanıcılar /login'de kalır — login.tsx bu durumu
+        // kendi içinde algılayıp onboarding wizard'ını gösterir.
+        if (!inAuthGroup) router.replace("/login");
+        return;
+      }
+      if (inAuthGroup || inChildHome) router.replace("/(tabs)/home");
+    })();
+
+    return () => { cancelled = true; };
   }, [session, loading, segments, profileChecked, hasProfile]);
 
   if (loading) {
@@ -69,6 +86,7 @@ function RootNavigator() {
       <Stack screenOptions={{ headerShown: false }}>
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
+        <Stack.Screen name="child-home" />
       </Stack>
     </>
   );

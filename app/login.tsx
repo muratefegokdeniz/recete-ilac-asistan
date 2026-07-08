@@ -9,6 +9,7 @@ import { useRouter } from "expo-router";
 import { Colors, Radius } from "../constants/Colors";
 import { useAuth } from "../context/AuthContext";
 import { getProfile, saveProfile, UserProfile } from "../services/database";
+import { submitLinkRequest, checkLinkStatus, saveChildSession, getOrCreateDeviceId } from "../services/childAuth";
 
 const GENDER_OPTIONS = ["Erkek", "Kadın", "Belirtmek istemiyorum"];
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyorum"];
@@ -20,7 +21,7 @@ const ONBOARDING_STEPS = [
   { title: "Sağlık geçmişiniz", subtitle: "Alerjiler ve kronik hastalıklar için uyarı alabilirsiniz.", icon: "medkit-outline" as const },
 ];
 
-type ScreenMode = "login" | "register" | "onboarding";
+type ScreenMode = "login" | "register" | "onboarding" | "child" | "child-pending";
 
 export default function LoginScreen() {
   const { signIn, signUp, session } = useAuth();
@@ -40,6 +41,15 @@ export default function LoginScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
+  // Çocuk girişi state
+  const [childParentEmail, setChildParentEmail] = useState("");
+  const [childParentPassword, setChildParentPassword] = useState("");
+  const [childName, setChildName] = useState("");
+  const [childLoading, setChildLoading] = useState(false);
+  const [childError, setChildError] = useState<string | null>(null);
+  const [childRequestId, setChildRequestId] = useState<string | null>(null);
+  const [childDenied, setChildDenied] = useState(false);
+
   // Eski kullanıcı fallback: session var ama profil yok (kayıt akışı bu değişiklikten
   // önce yarım kalmış) — aynı onboarding wizard'ını burada göster.
   React.useEffect(() => {
@@ -55,6 +65,49 @@ export default function LoginScreen() {
       })
       .catch(() => {});
   }, [session]);
+
+  // ── Çocuk Girişi ──────────────────────────────────────────────────────────
+
+  async function handleChildSubmit() {
+    setChildError(null);
+    if (!childParentEmail.trim() || !childParentPassword.trim() || !childName.trim()) {
+      setChildError("Tüm alanlar gereklidir.");
+      return;
+    }
+    setChildLoading(true);
+    try {
+      const requestId = await submitLinkRequest(childParentEmail.trim(), childParentPassword, childName.trim());
+      setChildRequestId(requestId);
+      setChildDenied(false);
+      setMode("child-pending");
+    } catch (e: any) {
+      setChildError(e?.message ?? "İstek gönderilemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setChildLoading(false);
+    }
+  }
+
+  React.useEffect(() => {
+    if (mode !== "child-pending" || !childRequestId) return;
+    let cancelled = false;
+    const interval = setInterval(async () => {
+      try {
+        const result = await checkLinkStatus(childRequestId);
+        if (cancelled) return;
+        if (result.status === "approved" && result.parentUserId && result.displayName) {
+          const deviceId = await getOrCreateDeviceId();
+          await saveChildSession({ requestId: childRequestId, deviceId, displayName: result.displayName });
+          router.replace("/child-home");
+        } else if (result.status === "denied") {
+          setChildDenied(true);
+          setMode("child");
+        }
+      } catch {
+        // sessizce yeniden dener
+      }
+    }, 4000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [mode, childRequestId]);
 
   // ── Auth ──────────────────────────────────────────────────────────────────
 
@@ -256,6 +309,111 @@ export default function LoginScreen() {
     );
   }
 
+  if (mode === "child") {
+    return (
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={styles.inner}>
+          <View style={styles.logoArea}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="people" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.appName}>Aileme Bağlı Gir</Text>
+            <Text style={styles.appSub}>Annenin/babanın email ve şifresini gir, onlar onaylayınca kendi ekranına geçersin.</Text>
+          </View>
+
+          <View style={styles.card}>
+            {childDenied && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Text style={styles.errorText}>İsteğin reddedildi. Bilgileri kontrol edip tekrar dene.</Text>
+              </View>
+            )}
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Senin Adın</Text>
+              <TextInput
+                style={styles.input}
+                value={childName}
+                onChangeText={setChildName}
+                placeholder="Örn: Ahmet"
+                placeholderTextColor={Colors.textMuted}
+                maxLength={20}
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Annenin/Babanın E-postası</Text>
+              <TextInput
+                style={styles.input}
+                value={childParentEmail}
+                onChangeText={setChildParentEmail}
+                placeholder="ornek@email.com"
+                placeholderTextColor={Colors.textMuted}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.field}>
+              <Text style={styles.label}>Annenin/Babanın Şifresi</Text>
+              <TextInput
+                style={styles.input}
+                value={childParentPassword}
+                onChangeText={setChildParentPassword}
+                placeholder="••••••••"
+                placeholderTextColor={Colors.textMuted}
+                secureTextEntry
+                autoCapitalize="none"
+              />
+            </View>
+
+            {childError && (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle" size={16} color="#DC2626" />
+                <Text style={styles.errorText}>{childError}</Text>
+              </View>
+            )}
+
+            <TouchableOpacity
+              style={[styles.btn, childLoading && styles.btnDisabled]}
+              onPress={handleChildSubmit}
+              disabled={childLoading}
+              activeOpacity={0.8}
+            >
+              {childLoading ? <ActivityIndicator color="white" size="small" /> : (
+                <Text style={styles.btnText}>İstek Gönder</Text>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setMode("login")} style={styles.switchBtn}>
+              <Text style={styles.switchText}>Vazgeç, normal girişe dön</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </SafeAreaView>
+    );
+  }
+
+  if (mode === "child-pending") {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.inner}>
+          <View style={styles.logoArea}>
+            <ActivityIndicator size="large" color={Colors.primary} />
+            <Text style={[styles.appName, { marginTop: 20 }]}>Onay Bekleniyor</Text>
+            <Text style={styles.appSub}>
+              İsteğin gönderildi. Annenin/babanın uygulamayı açıp seni onaylamasını bekliyoruz.
+            </Text>
+          </View>
+          <TouchableOpacity onPress={() => setMode("child")} style={styles.switchBtn}>
+            <Text style={styles.switchText}>Vazgeç</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   // ── Login / Register form ─────────────────────────────────────────────────
 
   return (
@@ -333,6 +491,12 @@ export default function LoginScreen() {
               {mode === "login" ? "Hesabın yok mu? Kayıt ol" : "Zaten hesabın var mı? Giriş yap"}
             </Text>
           </TouchableOpacity>
+
+          {mode === "login" && (
+            <TouchableOpacity onPress={() => setMode("child")} style={styles.switchBtn}>
+              <Text style={styles.switchText}>Çocuk musun? Aileme bağlı gir</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>

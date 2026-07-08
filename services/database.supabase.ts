@@ -390,6 +390,41 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
   if (error) throw error;
 }
 
+// ─── Child Link Requests (Aile Bağlantılı Çocuk Girişi) ─────────────────────
+
+export interface ChildLinkRequest {
+  id: string;
+  childDisplayName: string;
+  status: "pending" | "approved" | "denied";
+  createdAt: string;
+}
+
+export async function getPendingChildLinkRequests(): Promise<ChildLinkRequest[]> {
+  const userId = await getUserId();
+  if (!userId) return [];
+  const { data, error } = await supabase
+    .from("child_link_requests")
+    .select("*")
+    .eq("parent_user_id", userId)
+    .eq("status", "pending")
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r: any) => ({
+    id: r.id,
+    childDisplayName: r.child_display_name,
+    status: r.status,
+    createdAt: r.created_at,
+  }));
+}
+
+export async function respondToChildLinkRequest(id: string, approve: boolean): Promise<void> {
+  const { error } = await supabase
+    .from("child_link_requests")
+    .update({ status: approve ? "approved" : "denied" })
+    .eq("id", id);
+  if (error) throw error;
+}
+
 // ─── Family Members (Çocuk Profilleri) ──────────────────────────────────────
 
 export async function getFamilyMembers(): Promise<FamilyMember[]> {
