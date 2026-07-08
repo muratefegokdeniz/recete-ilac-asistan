@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
@@ -60,10 +60,10 @@ export default function ActiveScreen() {
   const [showAddChild, setShowAddChild] = useState(false);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
 
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     loadFamilyMembers();
     AsyncStorage.getItem("hiddenChildren").then((v) => { if (v) setHiddenChildren(JSON.parse(v)); });
-  }, []);
+  }, []));
 
   async function loadFamilyMembers() {
     try {

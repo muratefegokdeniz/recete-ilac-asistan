@@ -38,6 +38,7 @@ export default function ProfileScreen() {
   const [showAddChild, setShowAddChild] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<ChildLinkRequest[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [respondError, setRespondError] = useState<string | null>(null);
 
   // Aşı kartı
   const [childNamesFromMeds, setChildNamesFromMeds] = useState<string[]>([]);
@@ -81,10 +82,14 @@ export default function ProfileScreen() {
 
   async function handleRespond(id: string, approve: boolean) {
     setRespondingId(id);
+    setRespondError(null);
     try {
       await respondToChildLinkRequest(id, approve);
       await Promise.all([loadPendingRequests(), loadFamilyMembers()]);
-    } catch (e) { console.error(e); } finally {
+    } catch (e: any) {
+      console.error(e);
+      setRespondError(e?.message ?? "İşlem başarısız oldu. Lütfen tekrar deneyin.");
+    } finally {
       setRespondingId(null);
     }
   }
@@ -210,6 +215,11 @@ export default function ProfileScreen() {
         {pendingRequests.length > 0 && (
           <View style={[styles.section, styles.pendingSection]}>
             <Text style={styles.sectionTitle}>Bekleyen Bağlantı İstekleri</Text>
+            {respondError && (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{respondError}</Text>
+              </View>
+            )}
             {pendingRequests.map((req) => (
               <View key={req.id} style={styles.pendingRow}>
                 <View style={{ flex: 1 }}>
