@@ -1,6 +1,7 @@
 import { supabase } from "./supabase";
 import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage, ChildVaccine, FamilyMember } from "../types";
 import { VACCINE_SCHEDULE } from "../constants/VaccineSchedule";
+import { MEMBER_COLORS } from "../constants/MemberColors";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -418,11 +419,44 @@ export async function getPendingChildLinkRequests(): Promise<ChildLinkRequest[]>
 }
 
 export async function respondToChildLinkRequest(id: string, approve: boolean): Promise<void> {
+  const { data: request, error: fetchError } = await supabase
+    .from("child_link_requests")
+    .select("parent_user_id, child_display_name")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase
     .from("child_link_requests")
     .update({ status: approve ? "approved" : "denied" })
     .eq("id", id);
   if (error) throw error;
+
+  if (approve && request) {
+    const { data: existing, error: existingError } = await supabase
+      .from("family_members")
+      .select("id")
+      .eq("user_id", request.parent_user_id)
+      .eq("name", request.child_display_name);
+    if (existingError) throw existingError;
+
+    if (!existing || existing.length === 0) {
+      const { count, error: countError } = await supabase
+        .from("family_members")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", request.parent_user_id);
+      if (countError) throw countError;
+
+      const memberId = `fam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const { error: insertError } = await supabase.from("family_members").insert({
+        id: memberId,
+        user_id: request.parent_user_id,
+        name: request.child_display_name,
+        color: MEMBER_COLORS[(count ?? 0) % MEMBER_COLORS.length],
+      });
+      if (insertError) throw insertError;
+    }
+  }
 }
 
 // ─── Family Members (Çocuk Profilleri) ──────────────────────────────────────

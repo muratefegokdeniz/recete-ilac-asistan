@@ -83,7 +83,7 @@ export default function ProfileScreen() {
     setRespondingId(id);
     try {
       await respondToChildLinkRequest(id, approve);
-      await loadPendingRequests();
+      await Promise.all([loadPendingRequests(), loadFamilyMembers()]);
     } catch (e) { console.error(e); } finally {
       setRespondingId(null);
     }
