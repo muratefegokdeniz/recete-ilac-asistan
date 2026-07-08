@@ -35,6 +35,7 @@ export default function ProfileScreen() {
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
+  const [newlyApprovedChild, setNewlyApprovedChild] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
   const [pendingRequests, setPendingRequests] = useState<ChildLinkRequest[]>([]);
   const [respondingId, setRespondingId] = useState<string | null>(null);
@@ -84,8 +85,12 @@ export default function ProfileScreen() {
     setRespondingId(id);
     setRespondError(null);
     try {
-      await respondToChildLinkRequest(id, approve);
+      const newMember = await respondToChildLinkRequest(id, approve);
       await Promise.all([loadPendingRequests(), loadFamilyMembers()]);
+      if (newMember) {
+        setEditingChild(newMember);
+        setNewlyApprovedChild(true);
+      }
     } catch (e: any) {
       console.error(e);
       setRespondError(e?.message ?? "İşlem başarısız oldu. Lütfen tekrar deneyin.");
@@ -292,7 +297,7 @@ export default function ProfileScreen() {
             <Text style={[styles.infoValue, styles.infoEmpty]}>Henüz çocuk eklenmedi.</Text>
           ) : (
             familyMembers.map((child) => (
-              <TouchableOpacity key={child.id} style={styles.childRow} onPress={() => setEditingChild(child)} activeOpacity={0.75}>
+              <TouchableOpacity key={child.id} style={styles.childRow} onPress={() => { setEditingChild(child); setNewlyApprovedChild(false); }} activeOpacity={0.75}>
                 <View style={[styles.childAvatar, { backgroundColor: child.color }]}>
                   <Text style={styles.childAvatarText}>{child.name.charAt(0).toUpperCase()}</Text>
                 </View>
@@ -507,18 +512,21 @@ export default function ProfileScreen() {
         visible={!!editingChild}
         mode="edit"
         initial={editingChild ?? undefined}
-        onCancel={() => setEditingChild(null)}
+        forceForm={newlyApprovedChild}
+        onCancel={() => { setEditingChild(null); setNewlyApprovedChild(false); }}
         onSave={async (member) => {
           if (!editingChild) return;
           await updateFamilyMember(editingChild.id, member);
           await loadFamilyMembers();
           setEditingChild(null);
+          setNewlyApprovedChild(false);
         }}
         onDelete={async () => {
           if (!editingChild) return;
           await deleteFamilyMember(editingChild.id);
           await loadFamilyMembers();
           setEditingChild(null);
+          setNewlyApprovedChild(false);
         }}
       />
     </SafeAreaView>

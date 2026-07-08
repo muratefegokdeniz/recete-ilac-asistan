@@ -418,7 +418,10 @@ export async function getPendingChildLinkRequests(): Promise<ChildLinkRequest[]>
   }));
 }
 
-export async function respondToChildLinkRequest(id: string, approve: boolean): Promise<void> {
+// approve edildiğinde, sadece o an oluşturulan yeni family_members satırını
+// döner (profil formunu otomatik açmak için) — zaten var olan bir kayıtla
+// eşleşirse veya reddedildiyse null döner.
+export async function respondToChildLinkRequest(id: string, approve: boolean): Promise<FamilyMember | null> {
   const { data: request, error: fetchError } = await supabase
     .from("child_link_requests")
     .select("parent_user_id, child_display_name")
@@ -432,31 +435,37 @@ export async function respondToChildLinkRequest(id: string, approve: boolean): P
     .eq("id", id);
   if (error) throw error;
 
-  if (approve && request) {
-    const { data: existing, error: existingError } = await supabase
-      .from("family_members")
-      .select("id")
-      .eq("user_id", request.parent_user_id)
-      .eq("name", request.child_display_name);
-    if (existingError) throw existingError;
+  if (!approve || !request) return null;
 
-    if (!existing || existing.length === 0) {
-      const { count, error: countError } = await supabase
-        .from("family_members")
-        .select("id", { count: "exact", head: true })
-        .eq("user_id", request.parent_user_id);
-      if (countError) throw countError;
+  const { data: existing, error: existingError } = await supabase
+    .from("family_members")
+    .select("id")
+    .eq("user_id", request.parent_user_id)
+    .eq("name", request.child_display_name);
+  if (existingError) throw existingError;
 
-      const memberId = `fam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      const { error: insertError } = await supabase.from("family_members").insert({
-        id: memberId,
-        user_id: request.parent_user_id,
-        name: request.child_display_name,
-        color: MEMBER_COLORS[(count ?? 0) % MEMBER_COLORS.length],
-      });
-      if (insertError) throw insertError;
-    }
-  }
+  if (existing && existing.length > 0) return null;
+
+  const { count, error: countError } = await supabase
+    .from("family_members")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", request.parent_user_id);
+  if (countError) throw countError;
+
+  const memberId = `fam_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const { data: inserted, error: insertError } = await supabase
+    .from("family_members")
+    .insert({
+      id: memberId,
+      user_id: request.parent_user_id,
+      name: request.child_display_name,
+      color: MEMBER_COLORS[(count ?? 0) % MEMBER_COLORS.length],
+    })
+    .select()
+    .single();
+  if (insertError) throw insertError;
+
+  return rowToFamilyMember(inserted);
 }
 
 // ─── Family Members (Çocuk Profilleri) ──────────────────────────────────────

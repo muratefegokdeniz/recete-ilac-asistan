@@ -20,6 +20,7 @@ export function ChildProfileModal({
   visible,
   mode,
   initial,
+  forceForm,
   onSave,
   onDelete,
   onCancel,
@@ -27,6 +28,8 @@ export function ChildProfileModal({
   visible: boolean;
   mode: "create" | "edit";
   initial?: FamilyMember;
+  /** true iken "edit" modu bile doğrudan forma açılır (view kartını atlar) — örn. onaylanan çocuğun bilgilerini ilk kez isterken. */
+  forceForm?: boolean;
   onSave: (member: Draft) => Promise<void>;
   onDelete?: () => Promise<void>;
   onCancel: () => void;
@@ -42,9 +45,9 @@ export function ChildProfileModal({
     if (visible) {
       setDraft(initial ? { ...initial } : { ...EMPTY_DRAFT, color: MEMBER_COLORS[Math.floor(Math.random() * MEMBER_COLORS.length)]! });
       setError(null);
-      setScreen(mode === "edit" ? "view" : "form");
+      setScreen(mode === "edit" && !forceForm ? "view" : "form");
     }
-  }, [visible, initial, mode]);
+  }, [visible, initial, mode, forceForm]);
 
   async function handleSave() {
     if (!draft.name.trim()) {

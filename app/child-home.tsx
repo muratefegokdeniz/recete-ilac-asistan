@@ -9,10 +9,10 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../constants/Colors";
 import { ConfirmModal, EmptyState } from "../components/ui";
 import {
-  getChildSession, clearChildSession, fetchChildState, markChildDose, markChildVaccine, ChildSession,
+  getChildSession, clearChildSession, fetchChildState, markChildDose, ChildSession,
 } from "../services/childAuth";
 import { requestPermissions, scheduleDailyReminder } from "../services/notifications";
-import { ActiveMedicine, ChildVaccine } from "../types";
+import { ActiveMedicine } from "../types";
 
 const SCHEDULED_KEY = "childScheduledNotifs";
 
@@ -20,7 +20,6 @@ export default function ChildHomeScreen() {
   const router = useRouter();
   const [session, setSession] = useState<ChildSession | null>(null);
   const [medicines, setMedicines] = useState<ActiveMedicine[]>([]);
-  const [vaccines, setVaccines] = useState<ChildVaccine[]>([]);
   const [takenDoses, setTakenDoses] = useState<{ active_medicine_id: string; scheduled_time: string; taken_at: string | null; skipped: boolean }[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
@@ -41,7 +40,6 @@ export default function ChildHomeScreen() {
       setSession(s);
       const state = await fetchChildState(s);
       setMedicines(state.medicines);
-      setVaccines(state.vaccines);
       setTakenDoses(state.takenDoses);
       await ensureNotificationsScheduled(state.medicines);
     } catch (e) {
@@ -101,17 +99,6 @@ export default function ChildHomeScreen() {
     }
   }
 
-  async function handleToggleVaccine(vaccine: ChildVaccine) {
-    if (!session) return;
-    setActionLoading(`vac_${vaccine.id}`);
-    try {
-      await markChildVaccine(session, vaccine.id, !vaccine.completedAt);
-      await load();
-    } finally {
-      setActionLoading(null);
-    }
-  }
-
   async function handleSignOut() {
     await clearChildSession();
     router.replace("/login");
@@ -125,14 +112,12 @@ export default function ChildHomeScreen() {
     );
   }
 
-  const today = new Date().toISOString().split("T")[0]!;
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>Merhaba, {session?.displayName}!</Text>
-          <Text style={styles.headerSub}>İlaçların ve aşı kartın</Text>
+          <Text style={styles.headerSub}>İlaçların</Text>
         </View>
         <TouchableOpacity onPress={() => setShowSignOutConfirm(true)} style={styles.signOutBtn}>
           <Ionicons name="log-out-outline" size={20} color={Colors.danger} />
@@ -191,42 +176,6 @@ export default function ChildHomeScreen() {
             </View>
           ))
         )}
-
-        <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Aşı Kartın</Text>
-        {vaccines.length === 0 ? (
-          <EmptyState
-            icon={<MaterialIcons name="vaccines" size={36} color={Colors.textMuted} />}
-            title="Aşı Kartı Yok"
-            description="Ailen henüz aşı kartını oluşturmadı."
-          />
-        ) : (
-          vaccines.map((v) => {
-            const overdue = !v.completedAt && v.dueDate < today;
-            return (
-              <TouchableOpacity
-                key={v.id}
-                style={styles.vaccineCard}
-                onPress={() => handleToggleVaccine(v)}
-                disabled={actionLoading === `vac_${v.id}`}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.checkbox, v.completedAt && styles.checkboxDone]}>
-                  {actionLoading === `vac_${v.id}` ? (
-                    <ActivityIndicator size="small" color={v.completedAt ? "white" : Colors.primary} />
-                  ) : v.completedAt ? (
-                    <Ionicons name="checkmark" size={16} color="white" />
-                  ) : null}
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.vaccineName}>{v.vaccineName}</Text>
-                  <Text style={[styles.vaccineDue, overdue && styles.vaccineDueOverdue]}>
-                    {v.completedAt ? "Tamamlandı" : overdue ? `Vadesi geçti · ${v.dueDate}` : `Vade: ${v.dueDate}`}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            );
-          })
-        )}
       </ScrollView>
 
       <ConfirmModal
@@ -275,18 +224,4 @@ const styles = StyleSheet.create({
   takeBtnText: { fontSize: 13, fontWeight: "700", color: "white" },
   skipBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border },
   skipBtnText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
-
-  vaccineCard: {
-    flexDirection: "row", gap: 12, alignItems: "flex-start",
-    backgroundColor: Colors.surface, borderRadius: Radius.lg, padding: 14,
-    borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
-  },
-  checkbox: {
-    width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: Colors.border,
-    alignItems: "center", justifyContent: "center", marginTop: 2,
-  },
-  checkboxDone: { backgroundColor: Colors.primary, borderColor: Colors.primary },
-  vaccineName: { fontSize: 14, fontWeight: "700", color: Colors.text },
-  vaccineDue: { fontSize: 12, color: Colors.textMuted, marginTop: 4 },
-  vaccineDueOverdue: { color: Colors.danger, fontWeight: "700" },
 });
