@@ -162,15 +162,24 @@ paletinden kendi rengini seçebiliyor. Takvim, Takip ve Aşı Kartı ekranları 
 bölümü eklendi — her çocuğa dokunarak profilini görüntüleyip düzenleyebilir veya
 silebilirsiniz.
 
-## İş 5 — Ödeme Altyapısı (sadece altyapı, gerçek ödeme yok)
+## İş 5 — Ödeme Altyapısı (sadece altyapı, gerçek ödeme yok) ✅ tamamlandı
 
-- `profiles` tablosuna `is_premium boolean default false` eklenir.
-- Basit bir `hasAccess(profile, childProfile)` yardımcı fonksiyonu: ebeveyn hesabı için
-  `is_premium` kontrolü yapılır; çocuk profili için otomatik `true` döner (ayrı
-  hesap/ödeme olmadığı için zaten ebeveyn üzerinden erişiyor).
-- Şimdilik `is_premium` UI'da bir ayar/test flag'i olarak elle değiştirilebilir
-  (gerçek satın alma ekranı yok). RevenueCat/App Store IAP entegrasyonu bu sprint'e
-  dahil değil — App Store çıkışı öncesi ayrı iş olarak planlanacak.
+- `profiles` tablosuna `is_premium boolean not null default false` eklendi
+  (`database.sql` referansı güncellendi).
+- `services/database.supabase.ts`'e `hasAccess(profile, isChildProfile)` yardımcı
+  fonksiyonu eklendi: ebeveyn hesabı için `profile.isPremium` kontrolü yapılır;
+  `isChildProfile=true` geçilirse her zaman `true` döner (ayrı hesap/ödeme olmadığı
+  için çocuk zaten ebeveyn üzerinden erişiyor).
+- `UserProfile.isPremium` alanı eklendi, `getProfile`/`saveProfile` bunu `is_premium`
+  kolonuyla eşliyor.
+- Profil ekranına "Üyelik" bölümü eklendi — `is_premium`'u elle açıp kapatabilen bir
+  test switch'i (gerçek satın alma ekranı yok). RevenueCat/App Store IAP entegrasyonu
+  bu sprint'e dahil değil — App Store çıkışı öncesi ayrı iş olarak planlanacak.
+
+**Kalan (kullanıcı tarafında):** Supabase SQL editöründe şu migration çalıştırılmalı:
+```sql
+ALTER TABLE public.profiles ADD COLUMN is_premium boolean NOT NULL DEFAULT false;
+```
 
 ---
 

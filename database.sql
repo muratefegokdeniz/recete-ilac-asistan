@@ -110,6 +110,7 @@ CREATE TABLE public.profiles (
   blood_type text,
   chronic_conditions text,
   allergies text,
+  is_premium boolean NOT NULL DEFAULT false,
   updated_at timestamp with time zone DEFAULT now(),
   CONSTRAINT profiles_pkey PRIMARY KEY (id),
   CONSTRAINT profiles_id_fkey FOREIGN KEY (id) REFERENCES auth.users(id)

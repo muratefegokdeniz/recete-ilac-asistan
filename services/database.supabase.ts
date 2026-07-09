@@ -99,6 +99,16 @@ export interface UserProfile {
   bloodType?: string;
   chronicConditions?: string;
   allergies?: string;
+  isPremium?: boolean;
+}
+
+// Ödeme altyapısı henüz yok (gerçek satın alma ekranı bu sprintte kapsam dışı) —
+// bu sadece erişim kontrolünü tek bir yerden yönetmek için bir yardımcı.
+// Çocuk profilleri ayrı bir hesap/ödeme olmadığı için ebeveynin verisine zaten
+// erişiyor, dolayısıyla her zaman erişimi var sayılır.
+export function hasAccess(profile: UserProfile | null, isChildProfile: boolean = false): boolean {
+  if (isChildProfile) return true;
+  return !!profile?.isPremium;
 }
 
 // ─── Init ───────────────────────────────────────────────────────────────────
@@ -370,6 +380,7 @@ export async function getProfile(): Promise<UserProfile | null> {
     bloodType: data.blood_type ?? undefined,
     chronicConditions: data.chronic_conditions ?? undefined,
     allergies: data.allergies ?? undefined,
+    isPremium: data.is_premium ?? false,
   };
 }
 
@@ -386,6 +397,7 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     blood_type: profile.bloodType ?? null,
     chronic_conditions: profile.chronicConditions ?? null,
     allergies: profile.allergies ?? null,
+    is_premium: profile.isPremium ?? false,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;

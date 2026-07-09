@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
+  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Switch,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -32,6 +32,8 @@ export default function ProfileScreen() {
   const [draft, setDraft] = useState<UserProfile>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [premiumSaving, setPremiumSaving] = useState(false);
+  const [premiumError, setPremiumError] = useState<string | null>(null);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
@@ -194,6 +196,22 @@ export default function ProfileScreen() {
     setShowSignOutConfirm(true);
   }
 
+  async function handleTogglePremium(value: boolean) {
+    setPremiumSaving(true);
+    setPremiumError(null);
+    const previous = profile;
+    setProfile((p) => ({ ...p, isPremium: value }));
+    try {
+      await saveProfile({ ...profile, isPremium: value });
+    } catch (e: any) {
+      console.error("premium toggle hatası:", e);
+      setProfile(previous);
+      setPremiumError(e?.message ?? "Güncellenemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setPremiumSaving(false);
+    }
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -253,6 +271,34 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
+
+        {/* Üyelik */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Üyelik</Text>
+          <View style={styles.premiumRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.premiumLabel}>Premium</Text>
+              <Text style={styles.premiumSub}>
+                {profile.isPremium ? "Premium üyeliğiniz aktif." : "Şu an ücretsiz plandasınız."}
+              </Text>
+            </View>
+            {premiumSaving
+              ? <ActivityIndicator size="small" color={Colors.primary} />
+              : (
+                <Switch
+                  value={!!profile.isPremium}
+                  onValueChange={handleTogglePremium}
+                  trackColor={{ false: Colors.border, true: Colors.primaryLight }}
+                  thumbColor={profile.isPremium ? Colors.primary : undefined}
+                />
+              )}
+          </View>
+          {premiumError && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{premiumError}</Text>
+            </View>
+          )}
+        </View>
 
         {/* Kişisel Bilgiler */}
         <View style={styles.section}>
@@ -597,6 +643,10 @@ const styles = StyleSheet.create({
     shadowColor: Colors.text, shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 },
+
+  premiumRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  premiumLabel: { fontSize: 15, fontWeight: "700", color: Colors.text },
+  premiumSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
 
   infoRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
   infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
