@@ -58,7 +58,8 @@
           "cameraPermission": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor."
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-font"
     ]
   }
 }
