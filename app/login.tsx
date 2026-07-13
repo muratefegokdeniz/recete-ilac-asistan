@@ -8,6 +8,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Colors, Radius } from "../constants/Colors";
 import { useAuth } from "../context/AuthContext";
+import { useTutorial } from "../context/TutorialContext";
 import { getProfile, saveProfile, UserProfile } from "../services/database";
 import { submitLinkRequest, checkLinkStatus, saveChildSession, getOrCreateDeviceId } from "../services/childAuth";
 
@@ -21,10 +22,11 @@ const ONBOARDING_STEPS = [
   { title: "Sağlık geçmişiniz", subtitle: "Alerjiler ve kronik hastalıklar için uyarı alabilirsiniz.", icon: "medkit-outline" as const },
 ];
 
-type ScreenMode = "login" | "register" | "onboarding" | "child" | "child-pending";
+type ScreenMode = "login" | "register" | "onboarding" | "tutorial-prompt" | "child" | "child-pending";
 
 export default function LoginScreen() {
   const { signIn, signUp, session } = useAuth();
+  const tutorial = useTutorial();
   const router = useRouter();
 
   // Auth state
@@ -169,11 +171,21 @@ export default function LoginScreen() {
     setSaveError(null);
     try {
       await saveProfile(draft);
-      router.replace("/(tabs)/home");
+      setSaving(false);
+      setMode("tutorial-prompt");
     } catch (e: any) {
       setSaveError(e?.message ?? "Kaydedilemedi. Lütfen tekrar deneyin.");
       setSaving(false);
     }
+  }
+
+  function acceptTutorial() {
+    tutorial.start();
+    router.replace("/(tabs)/home");
+  }
+
+  function declineTutorial() {
+    router.replace("/(tabs)/home");
   }
 
   // ── Render ────────────────────────────────────────────────────────────────
@@ -304,6 +316,33 @@ export default function LoginScreen() {
               </View>
             )}
           </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (mode === "tutorial-prompt") {
+    return (
+      <SafeAreaView style={styles.container} edges={["top", "bottom"] as any}>
+        <View style={styles.inner}>
+          <View style={styles.logoArea}>
+            <View style={styles.logoCircle}>
+              <Ionicons name="sparkles-outline" size={40} color={Colors.primary} />
+            </View>
+            <Text style={styles.appName}>Hızlı bir tur ister misin?</Text>
+            <Text style={styles.appSub}>
+              Reçete ekleme, ilaç dolabı, ilaç takibi ve çocuk ekleme özelliklerini sana kısaca gösterelim.
+            </Text>
+          </View>
+
+          <View style={styles.card}>
+            <TouchableOpacity style={styles.btn} onPress={acceptTutorial} activeOpacity={0.8}>
+              <Text style={styles.btnText}>Evet, göster</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={declineTutorial} style={styles.switchBtn}>
+              <Text style={styles.switchText}>Hayır, sonra</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     );

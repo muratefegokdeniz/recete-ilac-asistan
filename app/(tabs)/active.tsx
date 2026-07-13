@@ -1,9 +1,9 @@
-import React, { useState, useCallback, useRef } from "react";
+import React, { useState, useCallback, useRef, useEffect } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image, useWindowDimensions,
+  Platform, Image, useWindowDimensions, Switch,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
+import { useTutorial } from "../../context/TutorialContext";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
@@ -18,7 +19,7 @@ import {
 } from "../../services/database";
 import { ActiveMedicine, TakenDose, Medicine, FamilyMember } from "../../types";
 import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
-import { requestPermissions, scheduleDailyReminder, cancelReminders } from "../../services/notifications";
+import { requestPermissions, scheduleDailyReminder, cancelReminders, notifyMissedChildDose } from "../../services/notifications";
 import { getSkipAdvice } from "../../services/anthropic";
 import { fallbackMemberColor } from "../../constants/MemberColors";
 
@@ -44,6 +45,7 @@ export default function ActiveScreen() {
   const medicinesRef = useRef<ActiveMedicine[]>([]);
   const doseMapRef = useRef<Record<string, TakenDose[]>>({});
   const dismissedRef = useRef<Set<string>>(new Set());
+  const childAlertedRef = useRef<Set<string>>(new Set());
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -59,6 +61,18 @@ export default function ActiveScreen() {
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
+  const tutorial = useTutorial();
+  const addChildBtnRef = useRef<View>(null);
+
+  useEffect(() => {
+    if (!(tutorial.active && tutorial.currentStep?.targetId === "addChild")) return;
+    const t = setTimeout(() => {
+      addChildBtnRef.current?.measureInWindow((x, y, width, height) => {
+        tutorial.reportHighlightTarget("addChild", { x, y, width, height });
+      });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [tutorial.active, tutorial.stepIndex]);
 
   useFocusEffect(useCallback(() => {
     loadFamilyMembers();
@@ -79,7 +93,7 @@ export default function ActiveScreen() {
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
     endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "",
-    memberName: "",
+    memberName: "", isAlarm: false,
   });
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -110,12 +124,22 @@ export default function ActiveScreen() {
     for (const med of medList) {
       for (const time of med.reminderTimes) {
         const [h, m] = time.split(":").map(Number);
-        const diff = Math.abs(currentMinutes - ((h ?? 0) * 60 + (m ?? 0)));
-        if (diff > 30) continue;
-        if (dismissedRef.current.has(`${med.id}_${time}`)) continue;
+        const schedMinutes = (h ?? 0) * 60 + (m ?? 0);
+        const diff = currentMinutes - schedMinutes;
         const doses = doseMap[med.id] ?? [];
-        if (!doses.some((d) => d.scheduledTime.startsWith(today) && d.scheduledTime.includes(time))) {
+        const handled = doses.some((d) => d.scheduledTime.startsWith(today) && d.scheduledTime.includes(time));
+
+        if (Math.abs(diff) <= 30 && !handled && !dismissedRef.current.has(`${med.id}_${time}`)) {
           due.push({ medicineId: med.id, medicineName: med.medicineName, time });
+        }
+
+        // Çocuğun 15+ dakikadır "aldım" demediği dozlar için aileye bildirim gönder.
+        if (med.memberName && !handled && diff >= 15 && diff <= 180) {
+          const alertKey = `${med.id}_${today}_${time}`;
+          if (!childAlertedRef.current.has(alertKey)) {
+            childAlertedRef.current.add(alertKey);
+            notifyMissedChildDose(med.memberName, med.medicineName, time).catch(() => {});
+          }
         }
       }
     }
@@ -151,12 +175,16 @@ export default function ActiveScreen() {
     if (validTimes.length === 0) { setAddError("En az bir geçerli saat girin (SS:DD)."); return; }
     setLoading(true);
     try {
+      const newId = Date.now().toString();
       const notifIds: string[] = [];
       for (const t of validTimes) {
-        try { const id = await scheduleDailyReminder(form.medicineName, t); if (id) notifIds.push(id); } catch {}
+        try {
+          const id = await scheduleDailyReminder(form.medicineName, t, { isAlarm: form.isAlarm, activeMedicineId: newId });
+          if (id) notifIds.push(id);
+        } catch {}
       }
       const med: ActiveMedicine = {
-        id: Date.now().toString(), medicineId: form.fromCabinetId, medicineName: form.medicineName,
+        id: newId, medicineId: form.fromCabinetId, medicineName: form.medicineName,
         dosage: form.dosage || "Belirtilmedi", frequency: form.frequency,
         mealTiming: form.mealTiming || undefined, startDate: form.startDate,
         endDate: form.endDate || undefined, reminderTimes: validTimes,
@@ -229,7 +257,7 @@ export default function ActiveScreen() {
   }
 
   function resetForm() {
-    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "", memberName: selectedMember === "Ben" ? "" : selectedMember });
+    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "", memberName: selectedMember === "Ben" ? "" : selectedMember, isAlarm: false });
     setAddError(null);
   }
 
@@ -305,7 +333,7 @@ export default function ActiveScreen() {
             )}
           </View>
         ))}
-        <TouchableOpacity style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
+        <TouchableOpacity ref={addChildBtnRef} style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
           <MaterialIcons name="add" size={16} color={Colors.primary} />
           <Text style={styles.addChildBtnText}>Çocuk Ekle</Text>
         </TouchableOpacity>
@@ -515,6 +543,20 @@ export default function ActiveScreen() {
                           <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
                         </TouchableOpacity>
                       </View>
+
+                      <View style={styles.alarmRow}>
+                        <View style={styles.alarmTextWrap}>
+                          <Text style={styles.formLabel}>Alarm sesiyle hatırlat</Text>
+                          <Text style={styles.alarmHint}>Bildirim alarm sesiyle çalar, bildirimden direkt "Aldım" diyebilirsin.</Text>
+                        </View>
+                        <Switch
+                          value={form.isAlarm}
+                          onValueChange={(v) => setForm((f) => ({ ...f, isAlarm: v }))}
+                          trackColor={{ false: Colors.border, true: Colors.primary }}
+                          thumbColor="#ffffff"
+                        />
+                      </View>
+
                       <DatePickerField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} />
                       <DatePickerField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="Tarih seç (opsiyonel)" />
                       <FormField label="Notlar" value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Aç karnına al gibi notlar..." multiline />
@@ -1082,6 +1124,14 @@ const styles = StyleSheet.create({
   timePickerRow: {
     flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8,
   },
+
+  alarmRow: {
+    flexDirection: "row", alignItems: "center", gap: 12,
+    backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md,
+    paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
+  },
+  alarmTextWrap: { flex: 1, gap: 2 },
+  alarmHint: { fontSize: 11.5, color: Colors.textSecondary, lineHeight: 15 },
 
   addErrorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,

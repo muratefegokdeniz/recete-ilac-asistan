@@ -98,3 +98,14 @@ export async function scheduleVaccineReminder(
 ): Promise<string | null> {
   return null;
 }
+
+export async function notifyMissedChildDose(
+  memberName: string,
+  medicineName: string,
+  time: string
+): Promise<void> {
+  if (typeof Notification === "undefined" || Notification.permission !== "granted") return;
+  new Notification("⚠️ İlaç Alınmadı", {
+    body: `${memberName}, ${medicineName} ilacını (${time}) henüz "aldım" olarak işaretlemedi.`,
+  });
+}

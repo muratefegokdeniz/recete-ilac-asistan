@@ -5,9 +5,12 @@ import { ActivityIndicator, View, Platform } from "react-native";
 import { useFonts } from "expo-font";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "../context/AuthContext";
+import { TutorialProvider } from "../context/TutorialContext";
+import { TutorialOverlay } from "../components/TutorialOverlay";
 import { Colors } from "../constants/Colors";
 import { getProfile } from "../services/database";
 import { getChildSession } from "../services/childAuth";
+import { registerDoseActionListener } from "../services/notifications";
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -19,6 +22,8 @@ function RootNavigator() {
   useEffect(() => {
     if (Platform.OS === "web") {
       import("../services/notifications.web").then((m) => m.rehydrateReminders());
+    } else {
+      registerDoseActionListener();
     }
   }, []);
 
@@ -61,9 +66,18 @@ function RootNavigator() {
         return;
       }
       if (!hasProfile) {
-        // Profili olmayan kullanıcılar /login'de kalır — login.tsx bu durumu
-        // kendi içinde algılayıp onboarding wizard'ını gösterir.
-        if (!inAuthGroup) router.replace("/login");
+        // hasProfile sadece session değişince tazeleniyor; onboarding bitip
+        // profil az önce kaydedildiyse burada hâlâ bayat (false) olabilir.
+        // tabs'a geçilmeye çalışılıyorsa zorla login'e atmadan önce taze kontrol et.
+        if (!inAuthGroup) {
+          const fresh = await getProfile().catch(() => null);
+          if (cancelled) return;
+          if (fresh?.fullName) {
+            setHasProfile(true);
+            return;
+          }
+          router.replace("/login");
+        }
         return;
       }
       if (inAuthGroup || inChildHome) router.replace("/(tabs)/home");
@@ -88,6 +102,7 @@ function RootNavigator() {
         <Stack.Screen name="login" />
         <Stack.Screen name="child-home" />
       </Stack>
+      <TutorialOverlay />
     </>
   );
 }
@@ -108,7 +123,9 @@ export default function RootLayout() {
 
   return (
     <AuthProvider>
-      <RootNavigator />
+      <TutorialProvider>
+        <RootNavigator />
+      </TutorialProvider>
     </AuthProvider>
   );
 }

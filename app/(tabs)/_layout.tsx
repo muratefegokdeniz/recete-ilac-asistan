@@ -63,11 +63,20 @@ function TabIcon({
 const tabScreens = (
   <>
     <Tabs.Screen
-      name="home"
+      name="chat"
       options={{
-        title: "Ana Sayfa",
+        title: "Asistan",
         tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="dashboard" focused={focused} color={color} />
+          <TabIcon name="chat" focused={focused} color={color} />
+        ),
+      }}
+    />
+    <Tabs.Screen
+      name="cabinet"
+      options={{
+        title: "Dolabım",
+        tabBarIcon: ({ focused, color }) => (
+          <TabIcon name="medical-services" focused={focused} color={color} />
         ),
       }}
     />
@@ -81,17 +90,17 @@ const tabScreens = (
       }}
     />
     <Tabs.Screen
-      name="index"
-      options={{ href: null }}
-    />
-    <Tabs.Screen
-      name="cabinet"
+      name="home"
       options={{
-        title: "Dolabım",
+        title: "Ana Sayfa",
         tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="medical-services" focused={focused} color={color} />
+          <TabIcon name="dashboard" focused={focused} color={color} />
         ),
       }}
+    />
+    <Tabs.Screen
+      name="index"
+      options={{ href: null }}
     />
     <Tabs.Screen
       name="active"
@@ -108,15 +117,6 @@ const tabScreens = (
         title: "Takvim",
         tabBarIcon: ({ focused, color }) => (
           <TabIcon name="calendar-month" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="chat"
-      options={{
-        title: "Asistan",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="chat" focused={focused} color={color} />
         ),
       }}
     />
