@@ -23,6 +23,7 @@ import {
   ChatConversation,
 } from "../../services/database";
 import { ChatMessage } from "../../types";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 
 const QUICK_QUESTIONS = [
   "Bu ilaç süt ile alınabilir mi?",
@@ -245,9 +246,12 @@ export default function ChatScreen() {
             </View>
           </View>
         </View>
-        <TouchableOpacity onPress={startNewChat} style={styles.clearBtn}>
-          <MaterialIcons name="edit" size={20} color={Colors.textSecondary} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={startNewChat} style={styles.clearBtn}>
+            <MaterialIcons name="edit" size={20} color={Colors.textSecondary} />
+          </TouchableOpacity>
+          <HeaderProfileButton />
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -438,6 +442,7 @@ const styles = StyleSheet.create({
   onlineRow: { flexDirection: "row", alignItems: "center", gap: 4, marginTop: 1 },
   onlineDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.secondary },
   onlineText: { fontSize: 12, color: Colors.secondary, fontWeight: "500" },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   clearBtn: {
     width: 36, height: 36,
     alignItems: "center", justifyContent: "center",

@@ -13,6 +13,7 @@ import {
 } from "../../services/database";
 import { ActiveMedicine, TakenDose, FamilyMember } from "../../types";
 import { fallbackMemberColor } from "../../constants/MemberColors";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 
 const DAY_NAMES = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
 const MONTH_NAMES = ["Ocak","Şubat","Mart","Nisan","Mayıs","Haziran","Temmuz","Ağustos","Eylül","Ekim","Kasım","Aralık"];
@@ -209,10 +210,13 @@ export default function CalendarScreen() {
           <Text style={styles.headerTitle}>İlaç Takvimi</Text>
           <Text style={styles.headerSub}>Aylık doz programı ve uyum takibi</Text>
         </View>
-        <TouchableOpacity style={styles.todayBtn} onPress={goToday}>
-          <MaterialIcons name="today" size={16} color={Colors.primary} />
-          <Text style={styles.todayBtnText}>Bugün</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.todayBtn} onPress={goToday}>
+            <MaterialIcons name="today" size={16} color={Colors.primary} />
+            <Text style={styles.todayBtnText}>Bugün</Text>
+          </TouchableOpacity>
+          <HeaderProfileButton />
+        </View>
       </View>
 
       {allChildren.length > 0 && (
@@ -555,6 +559,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.text },
   headerSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   todayBtn: {
     flexDirection: "row", alignItems: "center", gap: 5,
     paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.full,

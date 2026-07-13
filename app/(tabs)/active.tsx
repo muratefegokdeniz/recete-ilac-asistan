@@ -11,6 +11,7 @@ import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useTutorial } from "../../context/TutorialContext";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
@@ -289,10 +290,13 @@ export default function ActiveScreen() {
           <Text style={styles.headerTitle}>İlaç Takip</Text>
           <Text style={styles.headerSubtitle}>Bugün, {formatDate(new Date())}</Text>
         </View>
-        <TouchableOpacity style={styles.addBtn} onPress={openModal} activeOpacity={0.85}>
-          <MaterialIcons name="add" size={18} color={Colors.textInverse} />
-          <Text style={styles.addBtnText}>Ekle</Text>
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity style={styles.addBtn} onPress={openModal} activeOpacity={0.85}>
+            <MaterialIcons name="add" size={18} color={Colors.textInverse} />
+            <Text style={styles.addBtnText}>Ekle</Text>
+          </TouchableOpacity>
+          <HeaderProfileButton />
+        </View>
       </View>
 
       {/* Üye sekme çubuğu */}
@@ -824,6 +828,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.text },
   headerSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   addBtn: {
     flexDirection: "row", alignItems: "center", gap: 6,
     backgroundColor: Colors.primary, paddingHorizontal: 14, paddingVertical: 9, borderRadius: Radius.full,

@@ -22,6 +22,7 @@ import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMed
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 import { useTutorial } from "../../context/TutorialContext";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 
 const SAMPLE_TUTORIAL_MEDICINE: PrescriptionMedicine = {
   name: "Amoksisilin 500mg Kapsül",
@@ -313,14 +314,17 @@ export default function PrescriptionScreen() {
           <Text style={styles.headerTitle}>Reçetelerim</Text>
           <Text style={styles.headerSubtitle}>{prescriptions.length} reçete kayıtlı</Text>
         </View>
-        <View ref={addBtnRef} collapsable={false}>
-          <Button
-            title="Ekle"
-            onPress={openScanner}
-            variant="primary"
-            size="sm"
-            icon={<Ionicons name="camera" size={16} color="white" />}
-          />
+        <View style={styles.headerRight}>
+          <View ref={addBtnRef} collapsable={false}>
+            <Button
+              title="Ekle"
+              onPress={openScanner}
+              variant="primary"
+              size="sm"
+              icon={<Ionicons name="camera" size={16} color="white" />}
+            />
+          </View>
+          <HeaderProfileButton />
         </View>
       </View>
 
@@ -947,6 +951,7 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.text },
   headerSubtitle: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
 
   scroll: { flex: 1 },
   scrollContent: { padding: 16, gap: 10 },

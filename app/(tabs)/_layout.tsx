@@ -69,36 +69,6 @@ function TabIcon({
 // ayrı kardeşler olarak açılıyor.
 const tabScreens = [
   <Tabs.Screen
-    key="chat"
-    name="chat"
-    options={{
-      title: "Asistan",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
-        <TabIcon name="chat" focused={focused} color={color} />
-      ),
-    }}
-  />,
-  <Tabs.Screen
-    key="cabinet"
-    name="cabinet"
-    options={{
-      title: "Dolabım",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
-        <TabIcon name="medical-services" focused={focused} color={color} />
-      ),
-    }}
-  />,
-  <Tabs.Screen
-    key="prescriptions"
-    name="prescriptions"
-    options={{
-      title: "Reçete",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
-        <TabIcon name="document-scanner" focused={focused} color={color} />
-      ),
-    }}
-  />,
-  <Tabs.Screen
     key="home"
     name="home"
     options={{
@@ -120,6 +90,26 @@ const tabScreens = [
     }}
   />,
   <Tabs.Screen
+    key="prescriptions"
+    name="prescriptions"
+    options={{
+      title: "Reçete",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="document-scanner" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="cabinet"
+    name="cabinet"
+    options={{
+      title: "Dolabım",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="medical-services" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
     key="calendar"
     name="calendar"
     options={{
@@ -130,15 +120,20 @@ const tabScreens = [
     }}
   />,
   <Tabs.Screen
-    key="profile"
-    name="profile"
+    key="chat"
+    name="chat"
     options={{
-      title: "Profil",
+      title: "Asistan",
       tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
-        <TabIcon name="person" focused={focused} color={color} />
+        <TabIcon name="chat" focused={focused} color={color} />
       ),
     }}
   />,
+  // Deneme: Profil artık alt tab bar'da değil, her ekranın sağ üstünde küçük
+  // bir ikon olarak duruyor (bkz. HeaderProfileButton) — bottom bar 6 sekmeye
+  // düştü. href:null sadece native bottom bar'ı etkiliyor; web sidebar ve
+  // mobil web bar'ı (kendi ayrı listeleriyle) bundan etkilenmiyor.
+  <Tabs.Screen key="profile" name="profile" options={{ href: null }} />,
 ];
 
 export default function TabsLayout() {

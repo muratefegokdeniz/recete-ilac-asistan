@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { ActivityIndicator, View, Platform } from "react-native";
+import { ActivityIndicator, View, Platform, LogBox } from "react-native";
 import { useFonts } from "expo-font";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { AuthProvider, useAuth } from "../context/AuthContext";
@@ -10,6 +10,12 @@ import { TutorialOverlay } from "../components/TutorialOverlay";
 import { Colors } from "../constants/Colors";
 import { getProfile } from "../services/database";
 import { getChildSession } from "../services/childAuth";
+
+// expo-notifications, Expo Go'da (SDK 53+) push token dinleyicisi kurarken
+// bilinçli olarak console.error ile uyarıyor — bu bir throw değil, try/catch
+// yakalayamaz. Uygulama sadece yerel bildirim kullandığı için zararsız;
+// LogBox'ın tam ekran kırmızı uyarısını burada susturuyoruz.
+LogBox.ignoreLogs(["expo-notifications: Android Push notifications"]);
 
 function RootNavigator() {
   const { session, loading } = useAuth();

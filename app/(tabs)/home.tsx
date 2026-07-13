@@ -23,6 +23,7 @@ import {
 } from "../../services/database";
 import { ActiveMedicine, Medicine, SavedPrescription, TakenDose } from "../../types";
 import { useAuth } from "../../context/AuthContext";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 
 type TimeSlot = "morning" | "afternoon" | "evening";
 
@@ -204,9 +205,12 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container} edges={["top"]}>
       {/* Header */}
       <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <Text style={styles.greeting}>{greetingText()}, {userName}</Text>
-          <Text style={styles.headerDate}>{formatTurkishDate()}</Text>
+        <View style={styles.headerTopRow}>
+          <View style={styles.headerLeft}>
+            <Text style={styles.greeting}>{greetingText()}, {userName}</Text>
+            <Text style={styles.headerDate}>{formatTurkishDate()}</Text>
+          </View>
+          <HeaderProfileButton />
         </View>
         <View style={styles.headerActions}>
           <TouchableOpacity
@@ -717,21 +721,23 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.background },
 
   header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
     paddingHorizontal: 20,
     paddingVertical: 16,
     backgroundColor: Colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: Colors.border,
-    flexWrap: "wrap",
+    gap: 12,
+  },
+  headerTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
     gap: 10,
   },
   headerLeft: { flex: 1 },
   greeting: { fontSize: 22, fontWeight: "800", color: Colors.text },
   headerDate: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  headerActions: { flexDirection: "row", gap: 8 },
+  headerActions: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
   headerBtn: {
     flexDirection: "row",
     alignItems: "center",

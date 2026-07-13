@@ -21,6 +21,7 @@ import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, Da
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
+import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { Medicine } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
@@ -274,14 +275,17 @@ export default function CabinetScreen() {
               {soonCount > 0 ? ` · ${soonCount} yakında bitecek` : ""}
             </Text>
           </View>
-          <TouchableOpacity
-            style={styles.addBtn}
-            onPress={() => { setForm({}); setAiFilledFields(new Set()); setShowModal(true); }}
-            activeOpacity={0.85}
-          >
-            <MaterialIcons name="add" size={18} color={Colors.textInverse} />
-            <Text style={styles.addBtnText}>Ekle</Text>
-          </TouchableOpacity>
+          <View style={styles.headerRight}>
+            <TouchableOpacity
+              style={styles.addBtn}
+              onPress={() => { setForm({}); setAiFilledFields(new Set()); setShowModal(true); }}
+              activeOpacity={0.85}
+            >
+              <MaterialIcons name="add" size={18} color={Colors.textInverse} />
+              <Text style={styles.addBtnText}>Ekle</Text>
+            </TouchableOpacity>
+            <HeaderProfileButton />
+          </View>
         </View>
 
         {/* Search */}
@@ -693,6 +697,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 22, fontWeight: "800", color: Colors.text },
   headerSubtitle: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
 
+  headerRight: { flexDirection: "row", alignItems: "center", gap: 10 },
   addBtn: {
     flexDirection: "row",
     alignItems: "center",
