@@ -20,6 +20,7 @@ import { Colors, Shadows, Radius } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
+import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { Medicine } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 
@@ -74,6 +75,7 @@ export default function CabinetScreen() {
   const cardWidth = getCardWidth(screenWidth);
 
   const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medImageUrls, setMedImageUrls] = useState<Record<string, string | null>>({});
   const [search, setSearch] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -108,6 +110,14 @@ export default function CabinetScreen() {
     try {
       const list = await getAllMedicines();
       setMedicines(list);
+      // İmzalı URL'lerin süresi doluyor — her odaklanmada tazeden üretiyoruz.
+      const withPhoto = list.filter((m) => m.imageUri);
+      if (withPhoto.length > 0) {
+        const entries = await Promise.all(
+          withPhoto.map(async (m) => [m.id, await getSignedImageUrl(m.imageUri!)] as const)
+        );
+        setMedImageUrls((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
+      }
     } catch (e) {
       console.error(e);
     }
@@ -175,6 +185,16 @@ export default function CabinetScreen() {
     if (!form.name?.trim()) { setSaveError("İlaç adı gereklidir."); return; }
     setSaving(true);
     try {
+      // Cihazın geçici fotoğraf yolu bir süre sonra geçersiz kaldığı için,
+      // kaydetmeden önce kalıcı depolamaya (Supabase Storage) yüklüyoruz.
+      let storedImagePath: string | undefined;
+      if (form.imageUri) {
+        try {
+          storedImagePath = await uploadUserImage(form.imageUri, "medicines");
+        } catch (uploadErr) {
+          console.warn("İlaç fotoğrafı depolanamadı, resimsiz kaydediliyor:", uploadErr);
+        }
+      }
       const medicine: Medicine = {
         id: Date.now().toString(),
         name: form.name!,
@@ -186,7 +206,7 @@ export default function CabinetScreen() {
         mealTiming: form.mealTiming,
         expiryDate: form.expiryDate,
         quantity: form.quantity ?? 0,
-        imageUri: form.imageUri,
+        imageUri: storedImagePath,
         addedAt: new Date().toISOString(),
       };
       await addMedicine(medicine);
@@ -210,7 +230,9 @@ export default function CabinetScreen() {
     setDeleting(true);
     setDeleteError(null);
     try {
+      const toDelete = medicines.find((m) => m.id === deleteConfirmId);
       await deleteMedicine(deleteConfirmId);
+      if (toDelete?.imageUri) deleteUserImage(toDelete.imageUri).catch(() => {});
       setDeleteConfirmId(null);
       setSelectedMedicine(null);
       await loadMedicines();
@@ -329,8 +351,8 @@ export default function CabinetScreen() {
                   >
                     {/* Image area */}
                     <View style={styles.cardImg}>
-                      {med.imageUri ? (
-                        <Image source={{ uri: med.imageUri }} style={styles.cardImgFill} resizeMode="cover" />
+                      {medImageUrls[med.id] ? (
+                        <Image source={{ uri: medImageUrls[med.id]! }} style={styles.cardImgFill} resizeMode="cover" />
                       ) : (
                         <View style={styles.cardImgPlaceholder}>
                           <View style={styles.placeholderIconCircle}>
@@ -524,8 +546,8 @@ export default function CabinetScreen() {
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {selectedMedicine.imageUri ? (
-                <Image source={{ uri: selectedMedicine.imageUri }} style={styles.detailImage} resizeMode="cover" />
+              {medImageUrls[selectedMedicine.id] ? (
+                <Image source={{ uri: medImageUrls[selectedMedicine.id]! }} style={styles.detailImage} resizeMode="cover" />
               ) : (
                 <View style={styles.detailImagePlaceholder}>
                   <View style={styles.detailPlaceholderIconCircle}>

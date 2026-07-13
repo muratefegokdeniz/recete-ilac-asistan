@@ -1,9 +1,35 @@
-import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 
+// expo-notifications'ın kendi modülü, Expo Go + SDK 53+ üzerinde Android'de
+// içe aktarılır aktarılmaz (herhangi bir fonksiyon çağrılmadan) senkron bir
+// hata fırlatabiliyor ("removed from Expo Go..."). Statik bir import bunu
+// try/catch'leyemez (modül, bizim kodumuz çalışmadan önce değerlendirilir);
+// bu yüzden modülü dinamik ve gecikmeli yüklüyoruz ki gerçek bir hata varsa
+// yakalayabilelim.
+type NotificationsModule = typeof import("expo-notifications");
+
+let notificationsModule: NotificationsModule | null | undefined;
+
+async function getNotifications(): Promise<NotificationsModule | null> {
+  if (notificationsModule !== undefined) return notificationsModule;
+  if (Platform.OS === "web") {
+    notificationsModule = null;
+    return null;
+  }
+  try {
+    notificationsModule = await import("expo-notifications");
+  } catch (e) {
+    console.warn("expo-notifications yüklenemedi (Expo Go sınırlaması olabilir):", e);
+    notificationsModule = null;
+  }
+  return notificationsModule;
+}
+
 let handlerConfigured = false;
-function ensureNotificationHandler(): void {
-  if (handlerConfigured || Platform.OS === "web") return;
+async function ensureNotificationHandler(): Promise<void> {
+  if (handlerConfigured) return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   handlerConfigured = true;
   try {
     Notifications.setNotificationHandler({
@@ -16,15 +42,14 @@ function ensureNotificationHandler(): void {
       }),
     });
   } catch (e) {
-    // Expo Go (SDK 53+) bazı Android sürümlerinde bunu senkron olarak fırlatabiliyor;
-    // uygulamanın geri kalanının çökmemesi için burada yutuyoruz.
     console.warn("Bildirim işleyicisi ayarlanamadı:", e);
   }
 }
 
 export async function requestPermissions(): Promise<boolean> {
-  if (Platform.OS === "web") return false;
-  ensureNotificationHandler();
+  const Notifications = await getNotifications();
+  if (!Notifications) return false;
+  await ensureNotificationHandler();
   try {
     const { status } = await Notifications.requestPermissionsAsync();
     return status === "granted";
@@ -44,7 +69,8 @@ export async function scheduleDailyReminder(
   medicineName: string,
   reminderTime: string
 ): Promise<string | null> {
-  if (Platform.OS === "web") return null;
+  const Notifications = await getNotifications();
+  if (!Notifications) return null;
   try {
     const { hour, minute } = parseTime(reminderTime);
     const id = await Notifications.scheduleNotificationAsync({
@@ -72,7 +98,8 @@ export async function notifyMissedChildDose(
   medicineName: string,
   time: string
 ): Promise<void> {
-  if (Platform.OS === "web") return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   try {
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -88,7 +115,8 @@ export async function notifyMissedChildDose(
 }
 
 export async function cancelReminders(notificationIds: string[]): Promise<void> {
-  if (Platform.OS === "web") return;
+  const Notifications = await getNotifications();
+  if (!Notifications) return;
   for (const id of notificationIds) {
     await Notifications.cancelScheduledNotificationAsync(id).catch(() => {});
   }
@@ -100,7 +128,8 @@ export async function scheduleVaccineReminder(
   vaccineName: string,
   dueDate: string // "YYYY-MM-DD"
 ): Promise<string | null> {
-  if (Platform.OS === "web") return null;
+  const Notifications = await getNotifications();
+  if (!Notifications) return null;
   const date = new Date(`${dueDate}T09:00:00`);
   if (date.getTime() <= Date.now()) return null; // geçmiş tarih için bildirim planlanmaz
   try {

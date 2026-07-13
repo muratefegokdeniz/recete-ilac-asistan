@@ -1,5 +1,6 @@
 import { Tabs } from "expo-router";
 import { View, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Colors } from "../../constants/Colors";
@@ -60,80 +61,89 @@ function TabIcon({
   );
 }
 
-const tabScreens = (
-  <>
-    <Tabs.Screen
-      name="chat"
-      options={{
-        title: "Asistan",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="chat" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="cabinet"
-      options={{
-        title: "Dolabım",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="medical-services" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="prescriptions"
-      options={{
-        title: "Reçete",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="document-scanner" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="home"
-      options={{
-        title: "Ana Sayfa",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="dashboard" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="index"
-      options={{ href: null }}
-    />
-    <Tabs.Screen
-      name="active"
-      options={{
-        title: "Takip",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="alarm" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="calendar"
-      options={{
-        title: "Takvim",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="calendar-month" focused={focused} color={color} />
-        ),
-      }}
-    />
-    <Tabs.Screen
-      name="profile"
-      options={{
-        title: "Profil",
-        tabBarIcon: ({ focused, color }) => (
-          <TabIcon name="person" focused={focused} color={color} />
-        ),
-      }}
-    />
-  </>
-);
+// NOT: Tabs bileşeninin çocukları tek tek <Tabs.Screen> olmalı — bunları bir
+// Fragment (<>...</>) içine sarıp tek bir değişken olarak geçmek, expo-router'ın
+// "Layout children must be of type Screen" uyarısıyla TÜM seçenekleri (başlık,
+// ikon, href:null) yok sayıp dosya bazlı varsayılanlara düşmesine yol açıyordu.
+// Düz bir dizi (her elemanda key ile) kullanmak React tarafından doğru şekilde
+// ayrı kardeşler olarak açılıyor.
+const tabScreens = [
+  <Tabs.Screen
+    key="chat"
+    name="chat"
+    options={{
+      title: "Asistan",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="chat" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="cabinet"
+    name="cabinet"
+    options={{
+      title: "Dolabım",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="medical-services" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="prescriptions"
+    name="prescriptions"
+    options={{
+      title: "Reçete",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="document-scanner" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="home"
+    name="home"
+    options={{
+      title: "Ana Sayfa",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="dashboard" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen key="index" name="index" options={{ href: null }} />,
+  <Tabs.Screen
+    key="active"
+    name="active"
+    options={{
+      title: "Takip",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="alarm" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="calendar"
+    name="calendar"
+    options={{
+      title: "Takvim",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="calendar-month" focused={focused} color={color} />
+      ),
+    }}
+  />,
+  <Tabs.Screen
+    key="profile"
+    name="profile"
+    options={{
+      title: "Profil",
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+        <TabIcon name="person" focused={focused} color={color} />
+      ),
+    }}
+  />,
+];
 
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const showSidebar = Platform.OS === "web" && width >= 768;
   const isMobileWeb = Platform.OS === "web" && width < 768;
 
@@ -180,7 +190,13 @@ export default function TabsLayout() {
       initialRouteName="home"
       screenOptions={{
         headerShown: false,
-        tabBarStyle: styles.tabBar,
+        tabBarStyle: [
+          styles.tabBar,
+          {
+            height: 56 + insets.bottom,
+            paddingBottom: insets.bottom + 8,
+          },
+        ],
         tabBarActiveTintColor: Colors.tabBarActive,
         tabBarInactiveTintColor: Colors.tabBarInactive,
         tabBarLabelStyle: styles.tabLabel,
@@ -235,9 +251,10 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.tabBar,
     borderTopColor: Colors.tabBarBorder,
     borderTopWidth: 1,
-    height: Platform.OS === "ios" ? 88 : 64,
-    paddingBottom: Platform.OS === "ios" ? 24 : 8,
     paddingTop: 8,
+    // height/paddingBottom TabsLayout içinde useSafeAreaInsets ile
+    // dinamik olarak ekleniyor (Android gesture bar/geri çubuğuyla
+    // çakışmasın diye).
   },
   tabLabel: {
     fontSize: 11,

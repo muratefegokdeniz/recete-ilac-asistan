@@ -19,6 +19,7 @@ import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
+import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 import { useTutorial } from "../../context/TutorialContext";
 
@@ -40,6 +41,7 @@ export default function PrescriptionScreen() {
   const [showScanner, setShowScanner] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [medImages, setMedImages] = useState<Record<string, string | null>>({});
+  const [prescImageUrls, setPrescImageUrls] = useState<Record<string, string | null>>({});
 
   const [addingToActive, setAddingToActive] = useState(false);
   const [addedToActive, setAddedToActive] = useState(false);
@@ -96,6 +98,13 @@ export default function PrescriptionScreen() {
   async function loadPrescriptions() {
     const list = await getAllPrescriptions();
     setPrescriptions(list);
+    // İmzalı URL'lerin süresi doluyor — her odaklanmada tazeden üretiyoruz.
+    const withPhoto = list.filter((p) => p.imageUri);
+    if (withPhoto.length === 0) return;
+    const entries = await Promise.all(
+      withPhoto.map(async (p) => [p.id, await getSignedImageUrl(p.imageUri!)] as const)
+    );
+    setPrescImageUrls((prev) => ({ ...prev, ...Object.fromEntries(entries) }));
   }
 
   function openScanner() {
@@ -224,10 +233,19 @@ export default function PrescriptionScreen() {
       const result = await analyzePrescription(base64, mimeType);
       setAnalysis(result);
 
+      // Fotoğrafı kalıcı depolamaya (Supabase Storage) yükle — cihazın geçici
+      // dosya yolu bir süre sonra geçersiz kaldığı için doğrudan onu kaydetmiyoruz.
+      let storedImagePath: string | undefined;
+      try {
+        storedImagePath = await uploadUserImage(uri, "prescriptions");
+      } catch (uploadErr) {
+        console.warn("Reçete fotoğrafı depolanamadı, sadece analiz kaydediliyor:", uploadErr);
+      }
+
       // Otomatik kaydet
       const saved: SavedPrescription = {
         id: Date.now().toString(),
-        imageUri: uri,
+        imageUri: storedImagePath,
         analysis: result,
         savedAt: new Date().toISOString(),
       };
@@ -249,7 +267,9 @@ export default function PrescriptionScreen() {
     if (!deleteConfirmId) return;
     setDeleting(true);
     try {
+      const toDelete = prescriptions.find((p) => p.id === deleteConfirmId);
       await deletePrescription(deleteConfirmId);
+      if (toDelete?.imageUri) deleteUserImage(toDelete.imageUri).catch(() => {});
       setDeleteConfirmId(null);
       setSelected(null);
       await loadPrescriptions();
@@ -318,8 +338,8 @@ export default function PrescriptionScreen() {
             return (
               <Card key={p.id} style={styles.prescCard} onPress={() => setSelected(p)}>
                 <View style={styles.prescRow}>
-                  {p.imageUri ? (
-                    <Image source={{ uri: p.imageUri }} style={styles.prescThumb} resizeMode="cover" />
+                  {prescImageUrls[p.id] ? (
+                    <Image source={{ uri: prescImageUrls[p.id]! }} style={styles.prescThumb} resizeMode="cover" />
                   ) : (
                     <View style={[styles.prescThumb, styles.prescThumbPlaceholder]}>
                       <Ionicons name="document-text" size={24} color={Colors.primary} />
@@ -714,8 +734,8 @@ export default function PrescriptionScreen() {
               </View>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {selected.imageUri && (
-                <Image source={{ uri: selected.imageUri }} style={styles.detailImage} resizeMode="contain" />
+              {prescImageUrls[selected.id] && (
+                <Image source={{ uri: prescImageUrls[selected.id]! }} style={styles.detailImage} resizeMode="contain" />
               )}
               <PrescriptionDetail analysis={selected.analysis} />
             </ScrollView>
