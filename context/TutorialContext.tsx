@@ -13,15 +13,26 @@ export interface TutorialStep {
   title: string;
   body: string;
   targetId: string | null;
+  // true ise TutorialOverlay kendi kartını göstermez — ilgili ekran
+  // (ör. reçete ekleme modalı) anlatımı kendi içinde gösterir.
+  hostRendered?: boolean;
 }
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   {
-    id: "prescriptions",
+    id: "prescriptions-intro",
     route: "/(tabs)/prescriptions",
-    title: "Reçete",
-    body: "Reçeteni fotoğrafla ya da elle gir — yapay zeka ilaçları, dozu, sıklığı ve yan etkileri senin için okur.",
+    title: "Reçete Ekle",
+    body: "Yukarıdaki + butonuna dokunarak bir reçete ekleyebilirsin — fotoğraflayabilir ya da elle girebilirsin.",
+    targetId: "prescriptionsAdd",
+  },
+  {
+    id: "prescriptions-analysis",
+    route: "/(tabs)/prescriptions",
+    title: "AI Reçete Analizi",
+    body: "Reçeteni yapay zeka analiz eder.",
     targetId: null,
+    hostRendered: true,
   },
   {
     id: "cabinet",

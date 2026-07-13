@@ -10,7 +10,6 @@ import { TutorialOverlay } from "../components/TutorialOverlay";
 import { Colors } from "../constants/Colors";
 import { getProfile } from "../services/database";
 import { getChildSession } from "../services/childAuth";
-import { registerDoseActionListener } from "../services/notifications";
 
 function RootNavigator() {
   const { session, loading } = useAuth();
@@ -22,8 +21,6 @@ function RootNavigator() {
   useEffect(() => {
     if (Platform.OS === "web") {
       import("../services/notifications.web").then((m) => m.rehydrateReminders());
-    } else {
-      registerDoseActionListener();
     }
   }, []);
 

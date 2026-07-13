@@ -21,6 +21,9 @@ export function TutorialOverlay() {
   }, [active, stepIndex]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!active || !currentStep) return null;
+  // Bu adımın anlatımını ilgili ekran kendi içinde gösteriyor (ör. reçete
+  // analizi örneği modalın içinde) — burada ayrıca kart/karartma gösterme.
+  if (currentStep.hostRendered) return null;
 
   const isLast = stepIndex === TUTORIAL_STEPS.length - 1;
 

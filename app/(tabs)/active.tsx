@@ -3,7 +3,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image, useWindowDimensions, Switch,
+  Platform, Image, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
@@ -93,7 +93,7 @@ export default function ActiveScreen() {
     medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0],
     mealTiming: "", startDate: new Date().toISOString().split("T")[0],
     endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "",
-    memberName: "", isAlarm: false,
+    memberName: "",
   });
   const [addError, setAddError] = useState<string | null>(null);
 
@@ -175,16 +175,12 @@ export default function ActiveScreen() {
     if (validTimes.length === 0) { setAddError("En az bir geçerli saat girin (SS:DD)."); return; }
     setLoading(true);
     try {
-      const newId = Date.now().toString();
       const notifIds: string[] = [];
       for (const t of validTimes) {
-        try {
-          const id = await scheduleDailyReminder(form.medicineName, t, { isAlarm: form.isAlarm, activeMedicineId: newId });
-          if (id) notifIds.push(id);
-        } catch {}
+        try { const id = await scheduleDailyReminder(form.medicineName, t); if (id) notifIds.push(id); } catch {}
       }
       const med: ActiveMedicine = {
-        id: newId, medicineId: form.fromCabinetId, medicineName: form.medicineName,
+        id: Date.now().toString(), medicineId: form.fromCabinetId, medicineName: form.medicineName,
         dosage: form.dosage || "Belirtilmedi", frequency: form.frequency,
         mealTiming: form.mealTiming || undefined, startDate: form.startDate,
         endDate: form.endDate || undefined, reminderTimes: validTimes,
@@ -257,7 +253,7 @@ export default function ActiveScreen() {
   }
 
   function resetForm() {
-    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "", memberName: selectedMember === "Ben" ? "" : selectedMember, isAlarm: false });
+    setForm({ medicineName: "", dosage: "", frequency: FREQUENCY_OPTIONS[0], mealTiming: "", startDate: new Date().toISOString().split("T")[0], endDate: "", reminderTimes: ["08:00"], notes: "", fromCabinetId: "", memberName: selectedMember === "Ben" ? "" : selectedMember });
     setAddError(null);
   }
 
@@ -542,19 +538,6 @@ export default function ActiveScreen() {
                           <MaterialIcons name="add-circle-outline" size={16} color={Colors.primary} />
                           <Text style={styles.addTimeBtnText}>Saat Ekle</Text>
                         </TouchableOpacity>
-                      </View>
-
-                      <View style={styles.alarmRow}>
-                        <View style={styles.alarmTextWrap}>
-                          <Text style={styles.formLabel}>Alarm sesiyle hatırlat</Text>
-                          <Text style={styles.alarmHint}>Bildirim alarm sesiyle çalar, bildirimden direkt "Aldım" diyebilirsin.</Text>
-                        </View>
-                        <Switch
-                          value={form.isAlarm}
-                          onValueChange={(v) => setForm((f) => ({ ...f, isAlarm: v }))}
-                          trackColor={{ false: Colors.border, true: Colors.primary }}
-                          thumbColor="#ffffff"
-                        />
                       </View>
 
                       <DatePickerField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} />
@@ -1124,14 +1107,6 @@ const styles = StyleSheet.create({
   timePickerRow: {
     flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8,
   },
-
-  alarmRow: {
-    flexDirection: "row", alignItems: "center", gap: 12,
-    backgroundColor: Colors.surfaceAlt, borderRadius: Radius.md,
-    paddingHorizontal: 12, paddingVertical: 10, marginTop: 4,
-  },
-  alarmTextWrap: { flex: 1, gap: 2 },
-  alarmHint: { fontSize: 11.5, color: Colors.textSecondary, lineHeight: 15 },
 
   addErrorBox: {
     flexDirection: "row", alignItems: "center", gap: 8,

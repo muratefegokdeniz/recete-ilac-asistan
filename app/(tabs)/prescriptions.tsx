@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -20,6 +20,17 @@ import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePicke
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
+import { useTutorial } from "../../context/TutorialContext";
+
+const SAMPLE_TUTORIAL_MEDICINE: PrescriptionMedicine = {
+  name: "Amoksisilin 500mg Kapsül",
+  dosage: "1 kapsül",
+  frequency: "Günde 3 kez",
+  duration: "7 gün",
+  instructions: "Aç karnına, bol suyla",
+  purpose: "Bakteriyel enfeksiyonları tedavi etmek için kullanılır.",
+  sideEffects: "Mide bulantısı, ishal görülebilir.",
+};
 
 const AVATAR_COLORS = ["#00685f", "#008378", "#0a9186", "#2eada3", "#49bcb2", "#6fccc3", "#924628"];
 
@@ -56,12 +67,25 @@ export default function PrescriptionScreen() {
   const [manualMeds, setManualMeds] = useState("");
 
   const { openScanner: openScannerParam } = useLocalSearchParams<{ openScanner?: string }>();
+  const tutorial = useTutorial();
+  const addBtnRef = useRef<View>(null);
+  const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-analysis";
 
   useFocusEffect(
     useCallback(() => {
       loadPrescriptions();
     }, [])
   );
+
+  useEffect(() => {
+    if (!(tutorial.active && tutorial.currentStep?.targetId === "prescriptionsAdd")) return;
+    const t = setTimeout(() => {
+      addBtnRef.current?.measureInWindow((x, y, width, height) => {
+        tutorial.reportHighlightTarget("prescriptionsAdd", { x, y, width, height });
+      });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [tutorial.active, tutorial.stepIndex]);
 
   useEffect(() => {
     if (openScannerParam === "1") {
@@ -85,6 +109,9 @@ export default function PrescriptionScreen() {
     setManualDate("");
     setManualMeds("");
     setShowScanner(true);
+    if (tutorial.active && tutorial.currentStep?.id === "prescriptions-intro") {
+      tutorial.next();
+    }
   }
 
   async function handleManualAnalyze() {
@@ -266,13 +293,15 @@ export default function PrescriptionScreen() {
           <Text style={styles.headerTitle}>Reçetelerim</Text>
           <Text style={styles.headerSubtitle}>{prescriptions.length} reçete kayıtlı</Text>
         </View>
-        <Button
-          title="Ekle"
-          onPress={openScanner}
-          variant="primary"
-          size="sm"
-          icon={<Ionicons name="camera" size={16} color="white" />}
-        />
+        <View ref={addBtnRef} collapsable={false}>
+          <Button
+            title="Ekle"
+            onPress={openScanner}
+            variant="primary"
+            size="sm"
+            icon={<Ionicons name="camera" size={16} color="white" />}
+          />
+        </View>
       </View>
 
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -429,8 +458,29 @@ export default function PrescriptionScreen() {
             </TouchableOpacity>
           </View>
 
+          {isTutorialAnalysisStep && (
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <View style={styles.tutorialIntroCard}>
+                <Ionicons name="sparkles" size={22} color={Colors.primary} />
+                <Text style={styles.tutorialIntroTitle}>AI Reçete Analizi</Text>
+                <Text style={styles.tutorialIntroBody}>
+                  Reçeteni fotoğrafladığında ya da elle girdiğinde, yapay zeka ilaç adını, dozunu, kullanım sıklığını, kullanım şeklini ve yan etkilerini otomatik olarak çıkarır. Örnek bir sonuç şöyle görünür:
+                </Text>
+              </View>
+              <MedicineCard med={SAMPLE_TUTORIAL_MEDICINE} />
+              <TouchableOpacity
+                style={styles.tutorialContinueBtn}
+                onPress={() => { tutorial.next(); setShowScanner(false); }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.tutorialContinueBtnText}>Devam Et</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.textInverse} />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
           {/* Tab switcher */}
-          {!analysis && (
+          {!analysis && !isTutorialAnalysisStep && (
             <View style={styles.scannerTabBar}>
               <TouchableOpacity
                 style={[styles.scannerTab, scannerTab === "photo" && styles.scannerTabActive]}
@@ -453,6 +503,7 @@ export default function PrescriptionScreen() {
             </View>
           )}
 
+          {!isTutorialAnalysisStep && (
           <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             {/* ── PHOTO TAB ── */}
@@ -583,6 +634,7 @@ export default function PrescriptionScreen() {
             )}
 
           </ScrollView>
+          )}
         </SafeAreaView>
       </Modal>
 
@@ -1061,6 +1113,18 @@ const styles = StyleSheet.create({
     paddingVertical: 15, marginTop: 4,
   },
   analyzeBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
+
+  tutorialIntroCard: {
+    alignItems: "center", gap: 8, backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.xl, padding: 20, marginBottom: 16,
+  },
+  tutorialIntroTitle: { fontSize: 17, fontWeight: "800", color: Colors.text },
+  tutorialIntroBody: { fontSize: 13.5, color: Colors.primaryDark, textAlign: "center", lineHeight: 19 },
+  tutorialContinueBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: Colors.primary, borderRadius: Radius.lg, paddingVertical: 15, marginTop: 4,
+  },
+  tutorialContinueBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
 
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,

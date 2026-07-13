@@ -1,43 +1,5 @@
 import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
-import { markDoseTaken } from "./database";
-
-const ALARM_CATEGORY = "alarm-dose";
-let alarmCategoryConfigured = false;
-async function ensureAlarmCategory(): Promise<void> {
-  if (alarmCategoryConfigured || Platform.OS === "web") return;
-  alarmCategoryConfigured = true;
-  try {
-    await Notifications.setNotificationCategoryAsync(ALARM_CATEGORY, [
-      { identifier: "TAKE", buttonTitle: "Aldım" },
-    ]);
-  } catch (e) {
-    console.warn("Alarm bildirim kategorisi ayarlanamadı:", e);
-  }
-}
-
-let doseActionListenerRegistered = false;
-export function registerDoseActionListener(): void {
-  if (doseActionListenerRegistered || Platform.OS === "web") return;
-  doseActionListenerRegistered = true;
-  Notifications.addNotificationResponseReceivedListener(async (response) => {
-    if (response.actionIdentifier !== "TAKE") return;
-    const data = response.notification.request.content.data as
-      | { activeMedicineId?: string; time?: string }
-      | undefined;
-    if (!data?.activeMedicineId || !data?.time) return;
-    const today = new Date().toISOString().split("T")[0];
-    const scheduledTime = `${today}T${data.time}`;
-    try {
-      await markDoseTaken(
-        { id: `${data.activeMedicineId}_${scheduledTime}`, scheduledTime, takenAt: new Date().toISOString() },
-        data.activeMedicineId
-      );
-    } catch (e) {
-      console.error("Bildirimden doz işaretlenemedi:", e);
-    }
-  });
-}
 
 let handlerConfigured = false;
 function ensureNotificationHandler(): void {
@@ -80,20 +42,16 @@ function parseTime(time: string): { hour: number; minute: number } {
 
 export async function scheduleDailyReminder(
   medicineName: string,
-  reminderTime: string,
-  options?: { isAlarm?: boolean; activeMedicineId?: string }
+  reminderTime: string
 ): Promise<string | null> {
   if (Platform.OS === "web") return null;
   try {
     const { hour, minute } = parseTime(reminderTime);
-    if (options?.isAlarm) await ensureAlarmCategory();
     const id = await Notifications.scheduleNotificationAsync({
       content: {
-        title: options?.isAlarm ? "⏰ İlaç Alarmı" : "💊 İlaç Vakti",
+        title: "💊 İlaç Vakti",
         body: `${medicineName} alma zamanı geldi.`,
         sound: true,
-        data: { activeMedicineId: options?.activeMedicineId, time: reminderTime },
-        categoryIdentifier: options?.isAlarm ? ALARM_CATEGORY : undefined,
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DAILY,
