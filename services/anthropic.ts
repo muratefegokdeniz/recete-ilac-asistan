@@ -1,6 +1,12 @@
 import { PrescriptionAnalysis, PrescriptionMedicine } from "../types";
 import { supabase } from "./supabase";
 
+// Hibrit model rotası: görsel/tıbbi çıkarım gerektiren, hata payı düşük olması
+// gereken çağrılar güçlü modeli kullanır; kısa/düşük riskli metin çağrıları
+// (sohbet, tavsiye, isimle sorgu) çok daha ucuz olan modeli kullanır.
+const MODEL_ACCURACY = "claude-sonnet-5";
+const MODEL_LIGHT = "claude-haiku-4-5";
+
 interface ClaudeResponse {
   content: { type: string; text?: string }[];
 }
@@ -30,7 +36,7 @@ export async function analyzePrescription(
   mimeType: string = "image/jpeg"
 ): Promise<PrescriptionAnalysis> {
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_ACCURACY,
     max_tokens: 2048,
     system: `Sen bir eczacı asistanısın. Türkçe reçeteleri analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
 Yanıtını her zaman geçerli bir JSON formatında ver.`,
@@ -110,7 +116,7 @@ export async function analyzePrescriptionText(
   text: string
 ): Promise<PrescriptionAnalysis> {
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_ACCURACY,
     max_tokens: 2048,
     system: `Sen bir eczacı asistanısın. Kullanıcının yazdığı reçete metnini analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
 Yanıtını her zaman geçerli bir JSON formatında ver.`,
@@ -166,7 +172,7 @@ export async function analyzeMedicineImage(
 ): Promise<MedicineImageAnalysis> {
   console.log("[analyzeMedicineImage] base64 uzunluğu:", base64Image?.length ?? 0);
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_ACCURACY,
     max_tokens: 1500,
     system: `Sen bir eczacı asistanısın. İlaç görsellerini tanıyıp Türkçe kapsamlı bilgi veriyorsun. Yanıtını JSON formatında ver.`,
     messages: [
@@ -228,7 +234,7 @@ export async function getSkipAdvice(
   reason: string
 ): Promise<string> {
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_LIGHT,
     max_tokens: 512,
     system: `Sen Türkçe konuşan, empatik ve bilgili bir eczacı asistanısın.
 Kullanıcı bir ilacını atladığında, nedenine göre kısa ve pratik önerilerde bulunuyorsun.
@@ -243,7 +249,7 @@ Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
 
 export async function getMedicineInfoByName(name: string): Promise<PrescriptionMedicine> {
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_LIGHT,
     max_tokens: 1024,
     system: `Sen bir eczacı asistanısın. Türkçe ilaç bilgisi veriyorsun. Yanıtını JSON formatında ver.`,
     messages: [{
@@ -273,7 +279,7 @@ export async function chatWithAssistant(
   userMessage: string
 ): Promise<string> {
   const response = await callClaude({
-    model: "claude-sonnet-4-6",
+    model: MODEL_LIGHT,
     max_tokens: 1024,
     system: `Sen Türkçe konuşan, yardımcı ve bilgili bir eczacı asistanısın.
 İlaçlar, ilaç kullanımı, yan etkiler, ilaç etkileşimleri ve sağlık konularında bilgi veriyorsun.

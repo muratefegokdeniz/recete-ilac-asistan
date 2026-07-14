@@ -1,23 +1,24 @@
 import { Tabs } from "expo-router";
-import { View, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
 import { Colors } from "../../constants/Colors";
 import WebSidebar from "../../components/WebSidebar";
 
-// Exact tab order used on both sidebar and mobile web bar
+// Exact tab order used on mobile web bar — Profil burada yok, tüm platformlarda
+// tek profil girişi HeaderProfileButton (sağ üst) olsun diye (bkz. WebSidebar.tsx).
 const TAB_ITEMS = [
-  { name: "home",          icon: "dashboard"        as keyof typeof MaterialIcons.glyphMap },
-  { name: "prescriptions", icon: "document-scanner" as keyof typeof MaterialIcons.glyphMap },
-  { name: "cabinet",       icon: "medical-services" as keyof typeof MaterialIcons.glyphMap },
-  { name: "active",        icon: "alarm"            as keyof typeof MaterialIcons.glyphMap },
-  { name: "calendar",      icon: "calendar-month"   as keyof typeof MaterialIcons.glyphMap },
-  { name: "chat",          icon: "chat"             as keyof typeof MaterialIcons.glyphMap },
-  { name: "profile",       icon: "person"           as keyof typeof MaterialIcons.glyphMap },
+  { name: "home",          label: "Ana Sayfa", icon: "dashboard"        as keyof typeof MaterialIcons.glyphMap },
+  { name: "prescriptions", label: "Reçete",    icon: "document-scanner" as keyof typeof MaterialIcons.glyphMap },
+  { name: "cabinet",       label: "Dolabım",   icon: "medical-services" as keyof typeof MaterialIcons.glyphMap },
+  { name: "active",        label: "Takip",     icon: "alarm"            as keyof typeof MaterialIcons.glyphMap },
+  { name: "calendar",      label: "Takvim",    icon: "calendar-month"   as keyof typeof MaterialIcons.glyphMap },
+  { name: "chat",          label: "Asistan",   icon: "chat"             as keyof typeof MaterialIcons.glyphMap },
 ];
 
-// Custom bottom bar for mobile web — renders icons the same way WebSidebar does (works)
+// Custom bottom bar for mobile web — native tab bar'daki ikon-arkası dolgu +
+// etiket görünümüyle aynı aktif-sekme dilini kullanır (tutarlılık için).
 function MobileWebTabBar() {
   const pathname = usePathname();
   const router = useRouter();
@@ -29,15 +30,20 @@ function MobileWebTabBar() {
         return (
           <TouchableOpacity
             key={tab.name}
-            style={[mobileBarStyles.tab, active && mobileBarStyles.tabActive]}
+            style={mobileBarStyles.tab}
             onPress={() => router.push(`/(tabs)/${tab.name}` as any)}
             activeOpacity={0.7}
           >
-            <MaterialIcons
-              name={tab.icon}
-              size={24}
-              color={active ? Colors.tabBarActive : Colors.tabBarInactive}
-            />
+            <View style={[mobileBarStyles.iconWrapper, active && mobileBarStyles.iconWrapperActive]}>
+              <MaterialIcons
+                name={tab.icon}
+                size={22}
+                color={active ? Colors.tabBarActive : Colors.tabBarInactive}
+              />
+            </View>
+            <Text style={[mobileBarStyles.tabLabel, active && mobileBarStyles.tabLabelActive]}>
+              {tab.label}
+            </Text>
           </TouchableOpacity>
         );
       })}
@@ -210,18 +216,35 @@ const mobileBarStyles = StyleSheet.create({
     backgroundColor: Colors.tabBar,
     borderTopWidth: 1,
     borderTopColor: Colors.tabBarBorder,
-    height: 56,
-    alignItems: "center",
+    height: 64,
+    paddingTop: 6,
+    alignItems: "flex-start",
   },
   tab: {
     flex: 1,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
+    gap: 2,
     height: "100%",
   },
-  tabActive: {
-    borderTopWidth: 2,
-    borderTopColor: Colors.tabBarActive,
+  iconWrapper: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+  },
+  iconWrapperActive: {
+    backgroundColor: Colors.primaryLight,
+  },
+  tabLabel: {
+    fontSize: 11,
+    fontWeight: "500",
+    color: Colors.tabBarInactive,
+  },
+  tabLabelActive: {
+    color: Colors.tabBarActive,
+    fontWeight: "700",
   },
 });
 

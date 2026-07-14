@@ -19,13 +19,13 @@ export const Colors = {
 
   text: "#0d1f1e",
   textSecondary: "#3f5956",
-  textMuted: "#6f9490",
+  textMuted: "#557470",
   textInverse: "#ffffff",
 
   tabBar: "#ffffff",
   tabBarBorder: "#cde8e3",
   tabBarActive: "#00685f",
-  tabBarInactive: "#6f9490",
+  tabBarInactive: "#557470",
 };
 
 export const Shadows = {
