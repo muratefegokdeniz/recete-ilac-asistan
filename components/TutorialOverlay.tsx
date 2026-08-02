@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from "react";
-import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../constants/Colors";
@@ -46,8 +46,14 @@ export function TutorialOverlay() {
   // tur birden bitmiş gibi görünür.
   const requiresTargetTap = !!currentStep.targetId && !isLast;
 
+  // RN'in <Modal>'ı transparan/box-none olsa da native tarafta altındaki
+  // ekrana dokunuşların geçmesini engelliyor (ayrı bir native pencere) —
+  // bu yüzden vurgulanan "+" gibi gerçek butonlara asla dokunulamıyordu.
+  // Modal yerine, zaten _layout.tsx'te Stack'in üstünde kardeş olarak
+  // render edilen mutlak konumlu bir View kullanıyoruz; böylece scrim
+  // dışındaki dokunuşlar alttaki gerçek ekrana native olarak geçebiliyor.
   return (
-    <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={stop}>
+    <View style={styles.root} pointerEvents="box-none">
       <View style={styles.scrim} pointerEvents="box-none">
         {highlightRect && (
           <View
@@ -96,11 +102,16 @@ export function TutorialOverlay() {
           </View>
         </View>
       </View>
-    </Modal>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1000,
+    elevation: 1000,
+  },
   scrim: {
     flex: 1,
     backgroundColor: "rgba(13,31,30,0.4)",
