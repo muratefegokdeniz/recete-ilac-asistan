@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -24,6 +24,17 @@ import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../servi
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { Medicine } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useTutorial } from "../../context/TutorialContext";
+
+const SAMPLE_TUTORIAL_MEDICINE = {
+  name: "Parol 500mg Tablet",
+  dosage: "1 tablet",
+  frequency: "Günde 3 kez",
+  mealTiming: "Tok Karnına",
+  purpose: "Ağrı ve ateş düşürücü olarak kullanılır.",
+  expiryDate: "12.2026",
+  quantity: "20 adet",
+};
 
 type ExpiryStatus = "ok" | "soon" | "expired";
 
@@ -92,6 +103,10 @@ export default function CabinetScreen() {
   const [form, setForm] = useState<FormState>({});
 
   const { openAdd } = useLocalSearchParams<{ openAdd?: string }>();
+  const tutorial = useTutorial();
+  const addBtnRef = useRef<View>(null);
+  const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "cabinet-analysis";
+  const isTutorialScannerStep = tutorial.active && tutorial.currentStep?.id === "cabinet-scanner";
 
   useFocusEffect(
     useCallback(() => {
@@ -106,6 +121,25 @@ export default function CabinetScreen() {
       setShowModal(true);
     }
   }, [openAdd]);
+
+  useEffect(() => {
+    if (!(tutorial.active && tutorial.currentStep?.targetId === "cabinetAdd")) return;
+    const t = setTimeout(() => {
+      addBtnRef.current?.measureInWindow((x, y, width, height) => {
+        tutorial.reportHighlightTarget("cabinetAdd", { x, y, width, height });
+      });
+    }, 150);
+    return () => clearTimeout(t);
+  }, [tutorial.active, tutorial.stepIndex]);
+
+  function openAddModal() {
+    setForm({});
+    setAiFilledFields(new Set());
+    setShowModal(true);
+    if (tutorial.active && tutorial.currentStep?.id === "cabinet-intro") {
+      tutorial.next();
+    }
+  }
 
   async function loadMedicines() {
     try {
@@ -277,8 +311,9 @@ export default function CabinetScreen() {
           </View>
           <View style={styles.headerRight}>
             <TouchableOpacity
+              ref={addBtnRef}
               style={styles.addBtn}
-              onPress={() => { setForm({}); setAiFilledFields(new Set()); setShowModal(true); }}
+              onPress={openAddModal}
               activeOpacity={0.85}
             >
               <MaterialIcons name="add" size={18} color={Colors.textInverse} />
@@ -335,7 +370,7 @@ export default function CabinetScreen() {
             icon={<MaterialIcons name="medical-services" size={36} color={Colors.textMuted} />}
             title={search ? "Sonuç Bulunamadı" : "Dolabın Boş"}
             description={search ? `"${search}" ile eşleşen ilaç yok.` : "İlaç fotoğrafı çekerek AI ile otomatik doldurun veya manuel ekleyin."}
-            action={search ? undefined : { label: "İlk İlacı Ekle", onPress: () => setShowModal(true) }}
+            action={search ? undefined : { label: "İlk İlacı Ekle", onPress: openAddModal }}
           />
         ) : (
           <>
@@ -448,6 +483,47 @@ export default function CabinetScreen() {
             </TouchableOpacity>
           </View>
 
+          {isTutorialScannerStep && (
+            <View style={styles.tutorialScannerBanner}>
+              <Ionicons name="information-circle" size={18} color={Colors.primary} />
+              <Text style={styles.tutorialScannerBannerText}>
+                İlaç ekleme ekranı bu şekilde açılır: üstteki "Kamera"/"Galeri" ile ilacın kutusunu fotoğraflayabilir, ya da fotoğrafsız aşağıdaki formu elle doldurabilirsin.
+              </Text>
+              <TouchableOpacity style={styles.tutorialScannerBannerBtn} onPress={() => tutorial.next()} activeOpacity={0.85}>
+                <Text style={styles.tutorialScannerBannerBtnText}>İleri</Text>
+                <Ionicons name="arrow-forward" size={14} color={Colors.textInverse} />
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {isTutorialAnalysisStep && (
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <View style={styles.tutorialIntroCard}>
+                <Ionicons name="sparkles" size={22} color={Colors.primary} />
+                <Text style={styles.tutorialIntroTitle}>AI ile İlaç Ekleme</Text>
+                <Text style={styles.tutorialIntroBody}>
+                  İlacın kutusunu ya da prospektüsünü fotoğrafladığında, yapay zeka ilaç adını, dozunu, kullanım sıklığını, ne için kullanıldığını ve son kullanma tarihini otomatik olarak okuyup formu doldurur. Örnek bir sonuç şöyle görünür:
+                </Text>
+              </View>
+              <DetailRow label="İlaç Adı" value={SAMPLE_TUTORIAL_MEDICINE.name} />
+              <DetailRow label="Doz" value={SAMPLE_TUTORIAL_MEDICINE.dosage} />
+              <DetailRow label="Sıklık" value={SAMPLE_TUTORIAL_MEDICINE.frequency} />
+              <DetailRow label="Kullanım Zamanı" value={SAMPLE_TUTORIAL_MEDICINE.mealTiming} />
+              <DetailRow label="Ne İçin" value={SAMPLE_TUTORIAL_MEDICINE.purpose} />
+              <DetailRow label="Son Kullanma Tarihi" value={SAMPLE_TUTORIAL_MEDICINE.expiryDate} />
+              <DetailRow label="Adet" value={SAMPLE_TUTORIAL_MEDICINE.quantity} />
+              <TouchableOpacity
+                style={styles.tutorialContinueBtn}
+                onPress={() => { tutorial.next(); setShowModal(false); }}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.tutorialContinueBtnText}>Devam Et</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.textInverse} />
+              </TouchableOpacity>
+            </ScrollView>
+          )}
+
+          {!isTutorialAnalysisStep && (
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
             <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
@@ -536,6 +612,7 @@ export default function CabinetScreen() {
               <Button title="Dolaba Ekle" onPress={saveMedicine} variant="primary" fullWidth loading={saving} disabled={analyzing} size="lg" style={{ marginTop: 8, marginBottom: 8 }} />
             </ScrollView>
           </KeyboardAvoidingView>
+          )}
         </SafeAreaView>
       </Modal>
 
@@ -895,6 +972,30 @@ const styles = StyleSheet.create({
   },
   modalTitle: { fontSize: 18, fontWeight: "700", color: Colors.text, flex: 1, marginRight: 12 },
   modalContent: { padding: 20, paddingBottom: 32, gap: 12 },
+
+  tutorialIntroCard: {
+    alignItems: "center", gap: 8, backgroundColor: Colors.primaryLight,
+    borderRadius: Radius.xl, padding: 20, marginBottom: 16,
+  },
+  tutorialIntroTitle: { fontSize: 17, fontWeight: "800", color: Colors.text },
+  tutorialIntroBody: { fontSize: 13.5, color: Colors.primaryDark, textAlign: "center", lineHeight: 19 },
+  tutorialContinueBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: Colors.primary, borderRadius: Radius.lg, paddingVertical: 15, marginTop: 4,
+  },
+  tutorialContinueBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
+
+  tutorialScannerBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: Colors.primaryLight, borderBottomWidth: 1, borderBottomColor: Colors.primary + "30",
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
+  tutorialScannerBannerText: { flex: 1, fontSize: 12.5, color: Colors.primaryDark, lineHeight: 17 },
+  tutorialScannerBannerBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full,
+  },
+  tutorialScannerBannerBtnText: { color: Colors.textInverse, fontSize: 12.5, fontWeight: "700" },
 
   photoSection: { marginBottom: 4 },
   photoPickerArea: {

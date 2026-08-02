@@ -73,6 +73,7 @@ export default function PrescriptionScreen() {
   const tutorial = useTutorial();
   const addBtnRef = useRef<View>(null);
   const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-analysis";
+  const isTutorialScannerStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-scanner";
 
   useFocusEffect(
     useCallback(() => {
@@ -481,6 +482,19 @@ export default function PrescriptionScreen() {
               <Ionicons name="close" size={24} color={Colors.text} />
             </TouchableOpacity>
           </View>
+
+          {isTutorialScannerStep && (
+            <View style={styles.tutorialScannerBanner}>
+              <Ionicons name="information-circle" size={18} color={Colors.primary} />
+              <Text style={styles.tutorialScannerBannerText}>
+                Reçete ekleme ekranı bu şekilde açılır: "Fotoğraf" sekmesinde kamerayla çekip galeriden seçebilir, "Manuel Giriş" sekmesinde elle yazabilirsin.
+              </Text>
+              <TouchableOpacity style={styles.tutorialScannerBannerBtn} onPress={() => tutorial.next()} activeOpacity={0.85}>
+                <Text style={styles.tutorialScannerBannerBtnText}>İleri</Text>
+                <Ionicons name="arrow-forward" size={14} color={Colors.textInverse} />
+              </TouchableOpacity>
+            </View>
+          )}
 
           {isTutorialAnalysisStep && (
             <ScrollView contentContainerStyle={styles.modalContent}>
@@ -1150,6 +1164,18 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, borderRadius: Radius.lg, paddingVertical: 15, marginTop: 4,
   },
   tutorialContinueBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
+
+  tutorialScannerBanner: {
+    flexDirection: "row", alignItems: "center", gap: 10,
+    backgroundColor: Colors.primaryLight, borderBottomWidth: 1, borderBottomColor: Colors.primary + "30",
+    paddingHorizontal: 16, paddingVertical: 12,
+  },
+  tutorialScannerBannerText: { flex: 1, fontSize: 12.5, color: Colors.primaryDark, lineHeight: 17 },
+  tutorialScannerBannerBtn: {
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full,
+  },
+  tutorialScannerBannerBtnText: { color: Colors.textInverse, fontSize: 12.5, fontWeight: "700" },
 
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,

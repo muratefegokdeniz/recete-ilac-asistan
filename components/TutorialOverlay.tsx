@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { View, Text, TouchableOpacity, StyleSheet, Modal, Platform } from "react-native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
@@ -8,13 +8,25 @@ import { TUTORIAL_STEPS, useTutorial } from "../context/TutorialContext";
 export function TutorialOverlay() {
   const router = useRouter();
   const { active, stepIndex, currentStep, highlightRect, next, stop } = useTutorial();
+  // Turda art arda birden fazla adım aynı route'ta kalabiliyor (ör. bir
+  // ekranın kendi içinde gösterdiği hostRendered mock adımlar). Route zaten
+  // aynıysa tekrar router.replace çağırmak o ekranı yeniden mount edip
+  // (ör. açık bir Modal'ın local state'ini sıfırlayıp) turu ortasında
+  // kapatıyordu — bu yüzden sadece route gerçekten değiştiğinde naviagate ediyoruz.
+  const lastRouteRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!active) lastRouteRef.current = null;
+  }, [active]);
 
   useEffect(() => {
     if (!active || !currentStep) return;
+    if (lastRouteRef.current === currentStep.route) return;
     // Bir önceki navigasyonun (ör. onboarding'den home'a replace) oturması için
     // kısa bir gecikme — hemen ardından push/replace çağırmak bazı cihazlarda
     // sekme değişmeden yutuluyordu.
     const t = setTimeout(() => {
+      lastRouteRef.current = currentStep.route;
       router.replace(currentStep.route as any);
     }, 80);
     return () => clearTimeout(t);
@@ -26,6 +38,13 @@ export function TutorialOverlay() {
   if (currentStep.hostRendered) return null;
 
   const isLast = stepIndex === TUTORIAL_STEPS.length - 1;
+  // Bu adımlarda ilerleme, kartın "İleri" butonuyla değil, işaretlenen
+  // butona (targetId) dokunulmasıyla gerçekleşir — o dokunuş ilgili ekranda
+  // hem asıl aksiyonu (ör. tarayıcıyı açma) hem de tutorial.next()'i tetikler.
+  // Kartın kendi "İleri" butonu burada gösterilirse aksiyon hiç yaşanmadan
+  // adım ilerler ve bir sonraki (hostRendered) adım hiçbir şey göstermez —
+  // tur birden bitmiş gibi görünür.
+  const requiresTargetTap = !!currentStep.targetId && !isLast;
 
   return (
     <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={stop}>
@@ -54,6 +73,9 @@ export function TutorialOverlay() {
           </View>
           <Text style={styles.title}>{currentStep.title}</Text>
           <Text style={styles.body}>{currentStep.body}</Text>
+          {requiresTargetTap && (
+            <Text style={styles.hint}>Devam etmek için yukarıda işaretli butona dokun.</Text>
+          )}
 
           <View style={styles.progressRow}>
             {TUTORIAL_STEPS.map((_, i) => (
@@ -65,10 +87,12 @@ export function TutorialOverlay() {
             <TouchableOpacity onPress={stop} style={styles.skipBtn}>
               <Text style={styles.skipText}>Turu Atla</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={next} style={styles.nextBtn} activeOpacity={0.85}>
-              <Text style={styles.nextBtnText}>{isLast ? "Bitir" : "İleri"}</Text>
-              {!isLast && <MaterialIcons name="arrow-forward" size={16} color={Colors.textInverse} />}
-            </TouchableOpacity>
+            {!requiresTargetTap && (
+              <TouchableOpacity onPress={next} style={styles.nextBtn} activeOpacity={0.85}>
+                <Text style={styles.nextBtnText}>{isLast ? "Bitir" : "İleri"}</Text>
+                {!isLast && <MaterialIcons name="arrow-forward" size={16} color={Colors.textInverse} />}
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       </View>
@@ -102,6 +126,7 @@ const styles = StyleSheet.create({
   stepNum: { fontSize: 11, fontWeight: "700", color: Colors.primary, textTransform: "uppercase", letterSpacing: 0.5 },
   title: { fontSize: 19, fontWeight: "800", color: Colors.text, marginBottom: 6 },
   body: { fontSize: 14, color: Colors.textSecondary, lineHeight: 20 },
+  hint: { fontSize: 12.5, color: Colors.primary, fontWeight: "600", marginTop: 8 },
   progressRow: { flexDirection: "row", gap: 6, marginTop: 16, marginBottom: 4 },
   progressDot: { flex: 1, height: 4, borderRadius: 2, backgroundColor: Colors.borderLight },
   progressDotActive: { backgroundColor: Colors.primary },
