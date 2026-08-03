@@ -97,6 +97,11 @@ export default function PrescriptionScreen() {
     }
   }, [openScannerParam]);
 
+  useEffect(() => {
+    tutorial.registerStepAction("prescriptions-intro", openScanner);
+    return () => tutorial.registerStepAction("prescriptions-intro", null);
+  });
+
   async function loadPrescriptions() {
     const list = await getAllPrescriptions();
     setPrescriptions(list);

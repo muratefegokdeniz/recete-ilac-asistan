@@ -141,6 +141,11 @@ export default function CabinetScreen() {
     }
   }
 
+  useEffect(() => {
+    tutorial.registerStepAction("cabinet-intro", openAddModal);
+    return () => tutorial.registerStepAction("cabinet-intro", null);
+  });
+
   async function loadMedicines() {
     try {
       const list = await getAllMedicines();

@@ -7,7 +7,7 @@ import { TUTORIAL_STEPS, useTutorial } from "../context/TutorialContext";
 
 export function TutorialOverlay() {
   const router = useRouter();
-  const { active, stepIndex, currentStep, highlightRect, next, stop } = useTutorial();
+  const { active, stepIndex, currentStep, highlightRect, next, stop, runCurrentStepAction } = useTutorial();
   // Turda art arda birden fazla adım aynı route'ta kalabiliyor (ör. bir
   // ekranın kendi içinde gösterdiği hostRendered mock adımlar). Route zaten
   // aynıysa tekrar router.replace çağırmak o ekranı yeniden mount edip
@@ -38,13 +38,18 @@ export function TutorialOverlay() {
   if (currentStep.hostRendered) return null;
 
   const isLast = stepIndex === TUTORIAL_STEPS.length - 1;
-  // Bu adımlarda ilerleme, kartın "İleri" butonuyla değil, işaretlenen
-  // butona (targetId) dokunulmasıyla gerçekleşir — o dokunuş ilgili ekranda
-  // hem asıl aksiyonu (ör. tarayıcıyı açma) hem de tutorial.next()'i tetikler.
-  // Kartın kendi "İleri" butonu burada gösterilirse aksiyon hiç yaşanmadan
-  // adım ilerler ve bir sonraki (hostRendered) adım hiçbir şey göstermez —
-  // tur birden bitmiş gibi görünür.
+  // Bu adımlarda normal ilerleme yolu işaretlenen butona (targetId)
+  // dokunmaktır — o dokunuş ilgili ekranda hem asıl aksiyonu (ör. tarayıcıyı
+  // açma) hem de tutorial.next()'i tetikler. Ama kullanıcı bunu fark
+  // etmeyebilir, bu yüzden kartta da her zaman tıklanabilir bir "İleri"
+  // butonu gösteriyoruz; basıldığında önce ekranın kayıtlı aksiyonunu
+  // (registerStepAction) çalıştırıyoruz ki adım gerçekten "yaşanmadan"
+  // atlanmasın, kayıtlı aksiyon yoksa düz next()'e düşüyoruz.
   const requiresTargetTap = !!currentStep.targetId && !isLast;
+  const handleNext = () => {
+    if (requiresTargetTap && runCurrentStepAction()) return;
+    next();
+  };
 
   // RN'in <Modal>'ı transparan/box-none olsa da native tarafta altındaki
   // ekrana dokunuşların geçmesini engelliyor (ayrı bir native pencere) —
@@ -80,7 +85,7 @@ export function TutorialOverlay() {
           <Text style={styles.title}>{currentStep.title}</Text>
           <Text style={styles.body}>{currentStep.body}</Text>
           {requiresTargetTap && (
-            <Text style={styles.hint}>Devam etmek için yukarıda işaretli butona dokun.</Text>
+            <Text style={styles.hint}>Yukarıda işaretli butona dokunabilir ya da "İleri"ye basabilirsin.</Text>
           )}
 
           <View style={styles.progressRow}>
@@ -93,12 +98,10 @@ export function TutorialOverlay() {
             <TouchableOpacity onPress={stop} style={styles.skipBtn}>
               <Text style={styles.skipText}>Turu Atla</Text>
             </TouchableOpacity>
-            {!requiresTargetTap && (
-              <TouchableOpacity onPress={next} style={styles.nextBtn} activeOpacity={0.85}>
-                <Text style={styles.nextBtnText}>{isLast ? "Bitir" : "İleri"}</Text>
-                {!isLast && <MaterialIcons name="arrow-forward" size={16} color={Colors.textInverse} />}
-              </TouchableOpacity>
-            )}
+            <TouchableOpacity onPress={handleNext} style={styles.nextBtn} activeOpacity={0.85}>
+              <Text style={styles.nextBtnText}>{isLast ? "Bitir" : "İleri"}</Text>
+              {!isLast && <MaterialIcons name="arrow-forward" size={16} color={Colors.textInverse} />}
+            </TouchableOpacity>
           </View>
         </View>
       </View>

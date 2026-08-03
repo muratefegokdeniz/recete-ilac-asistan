@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, useMemo } from "react";
+import React, { createContext, useContext, useState, useCallback, useMemo, useRef } from "react";
 
 export interface TutorialRect {
   x: number;
@@ -90,6 +90,13 @@ interface TutorialContextValue {
   next: () => void;
   stop: () => void;
   reportHighlightTarget: (targetId: string, rect: TutorialRect | null) => void;
+  // Bazı adımlarda ilerlemek, gerçek bir ekran aksiyonunun (ör. tarayıcı
+  // modalını açmak) da çalışması gerekir — sadece stepIndex'i artırmak
+  // yetmez. İlgili ekran o adım aktifken kendi aksiyonunu burada kayıt
+  // eder; overlay'in "İleri" butonu varsa bu aksiyonu, yoksa düz next()'i
+  // çalıştırır.
+  registerStepAction: (stepId: string, action: (() => void) | null) => void;
+  runCurrentStepAction: () => boolean;
 }
 
 const TutorialContext = createContext<TutorialContextValue | null>(null);
@@ -98,6 +105,7 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const [active, setActive] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [highlightRect, setHighlightRect] = useState<TutorialRect | null>(null);
+  const stepActionsRef = useRef<Record<string, () => void>>({});
 
   const start = useCallback(() => {
     setStepIndex(0);
@@ -123,6 +131,19 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
     });
   }, []);
 
+  const registerStepAction = useCallback((stepId: string, action: (() => void) | null) => {
+    if (action) stepActionsRef.current[stepId] = action;
+    else delete stepActionsRef.current[stepId];
+  }, []);
+
+  const runCurrentStepAction = useCallback(() => {
+    const step = TUTORIAL_STEPS[stepIndex];
+    const action = step && stepActionsRef.current[step.id];
+    if (!action) return false;
+    action();
+    return true;
+  }, [stepIndex]);
+
   const reportHighlightTarget = useCallback(
     (targetId: string, rect: TutorialRect | null) => {
       setHighlightRect((prev) => {
@@ -137,8 +158,19 @@ export function TutorialProvider({ children }: { children: React.ReactNode }) {
   const currentStep = active ? TUTORIAL_STEPS[stepIndex] ?? null : null;
 
   const value = useMemo(
-    () => ({ active, stepIndex, currentStep, highlightRect, start, next, stop, reportHighlightTarget }),
-    [active, stepIndex, currentStep, highlightRect, start, next, stop, reportHighlightTarget]
+    () => ({
+      active,
+      stepIndex,
+      currentStep,
+      highlightRect,
+      start,
+      next,
+      stop,
+      reportHighlightTarget,
+      registerStepAction,
+      runCurrentStepAction,
+    }),
+    [active, stepIndex, currentStep, highlightRect, start, next, stop, reportHighlightTarget, registerStepAction, runCurrentStepAction]
   );
 
   return <TutorialContext.Provider value={value}>{children}</TutorialContext.Provider>;
