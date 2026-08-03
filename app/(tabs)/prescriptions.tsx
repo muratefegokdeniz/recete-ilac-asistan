@@ -14,15 +14,16 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
-import { useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
-import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine } from "../../services/database";
+import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 import { useTutorial } from "../../context/TutorialContext";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
+import { useAuth } from "../../context/AuthContext";
 
 const SAMPLE_TUTORIAL_MEDICINE: PrescriptionMedicine = {
   name: "Amoksisilin 500mg Kapsül",
@@ -70,6 +71,8 @@ export default function PrescriptionScreen() {
   const [manualMeds, setManualMeds] = useState("");
 
   const { openScanner: openScannerParam } = useLocalSearchParams<{ openScanner?: string }>();
+  const router = useRouter();
+  const { profile } = useAuth();
   const tutorial = useTutorial();
   const addBtnRef = useRef<View>(null);
   const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-analysis";
@@ -115,6 +118,20 @@ export default function PrescriptionScreen() {
   }
 
   function openScanner() {
+    // Reçete ekleme (fotoğraf VE manuel giriş sekmesi) tamamen AI analizine
+    // dayanıyor, AI'sız bir kayıt yolu yok — bu yüzden ekranı hiç açmadan
+    // burada kilitliyoruz.
+    if (!hasAiAccess(profile)) {
+      Alert.alert(
+        "Premium Özellik",
+        "Reçete ekleme AI destekli bir özelliktir, Premium üyeliğinizin aktif olması gerekir.",
+        [
+          { text: "Vazgeç", style: "cancel" },
+          { text: "Profilim", onPress: () => router.push("/(tabs)/profile") },
+        ]
+      );
+      return;
+    }
     setImageUri(null);
     setAnalysis(null);
     setErrorMsg(null);
@@ -339,7 +356,11 @@ export default function PrescriptionScreen() {
           <EmptyState
             icon={<Ionicons name="document-text-outline" size={36} color={Colors.textMuted} />}
             title="Henüz Reçete Yok"
-            description="Reçetenizi fotoğraflayın, AI ilaçları analiz etsin."
+            description={
+              hasAiAccess(profile)
+                ? "Reçetenizi fotoğraflayın, AI ilaçları analiz etsin."
+                : "Reçete ekleme AI destekli bir özelliktir, Premium üyelikte açılır."
+            }
             action={{ label: "Reçete Ekle", onPress: openScanner }}
           />
         ) : (

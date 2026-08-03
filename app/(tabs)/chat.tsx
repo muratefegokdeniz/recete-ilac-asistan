@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { chatWithAssistant } from "../../services/anthropic";
 import {
@@ -21,9 +21,12 @@ import {
   upsertChatConversation,
   deleteChatConversation,
   ChatConversation,
+  hasAiAccess,
 } from "../../services/database";
 import { ChatMessage } from "../../types";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
+import { EmptyState } from "../../components/ui";
+import { useAuth } from "../../context/AuthContext";
 
 const QUICK_QUESTIONS = [
   "Bu ilaç süt ile alınabilir mi?",
@@ -47,6 +50,8 @@ function newConvId() {
 }
 
 export default function ChatScreen() {
+  const { profile } = useAuth();
+  const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([makeWelcome()]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -150,6 +155,22 @@ export default function ChatScreen() {
       if (currentConvId === id) startNewChat();
       await loadConversations();
     } catch (_) {}
+  }
+
+  if (!hasAiAccess(profile)) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={[styles.header, { justifyContent: "flex-end" }]}>
+          <HeaderProfileButton />
+        </View>
+        <EmptyState
+          icon={<Ionicons name="lock-closed" size={32} color={Colors.textMuted} />}
+          title="AI Asistan Premium'da"
+          description="Sohbet asistanı, reçete/ilaç analizi gibi AI özellikleri Premium üyelikte açılır."
+          action={{ label: "Profilim", onPress: () => router.push("/(tabs)/profile") }}
+        />
+      </SafeAreaView>
+    );
   }
 
   return (

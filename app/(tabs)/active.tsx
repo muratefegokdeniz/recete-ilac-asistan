@@ -3,11 +3,11 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image, useWindowDimensions,
+  Platform, Image, useWindowDimensions, Alert,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
@@ -17,12 +17,14 @@ import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
   getFamilyMembers, addFamilyMember, deleteFamilyMember,
+  hasAiAccess, hasFamilyAccess,
 } from "../../services/database";
 import { ActiveMedicine, TakenDose, Medicine, FamilyMember } from "../../types";
 import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
 import { requestPermissions, scheduleDailyReminder, cancelReminders, notifyMissedChildDose } from "../../services/notifications";
 import { getSkipAdvice } from "../../services/anthropic";
 import { fallbackMemberColor } from "../../constants/MemberColors";
+import { useAuth } from "../../context/AuthContext";
 
 type AddMode = "manual" | "cabinet";
 interface DueReminder { medicineId: string; medicineName: string; time: string; }
@@ -35,6 +37,8 @@ const SKIP_REASONS = [
 export default function ActiveScreen() {
   const { width } = useWindowDimensions();
   const isWide = width > 720;
+  const { profile } = useAuth();
+  const router = useRouter();
 
   const [medicines, setMedicines] = useState<ActiveMedicine[]>([]);
   const [todayDoseMap, setTodayDoseMap] = useState<Record<string, TakenDose[]>>({});
@@ -247,6 +251,12 @@ export default function ActiveScreen() {
       await skipDose({ id: `${skipModal.medicineId}_${skipModal.scheduledTime}`, scheduledTime: skipModal.scheduledTime }, skipModal.medicineId);
       loadData();
     } catch (e: any) { console.error("Doz atlanamadı:", e); }
+    // AI tavsiyesi ikincil/opsiyonel bir özellik — AI erişimi yoksa sunucuya
+    // (claude-proxy) hiç istek atmadan sessizce var olan fallback'e düşüyoruz.
+    if (!hasAiAccess(profile)) {
+      setSkipAdvice("Şu an öneri alınamadı.");
+      return;
+    }
     setSkipLoading(true); setSkipAdvice(null);
     try { setSkipAdvice(await getSkipAdvice(skipModal.medicineName, reason)); }
     catch { setSkipAdvice("Şu an öneri alınamadı."); }
@@ -333,7 +343,25 @@ export default function ActiveScreen() {
             )}
           </View>
         ))}
-        <TouchableOpacity ref={addChildBtnRef} style={styles.addChildBtn} onPress={() => setShowAddChild(true)} activeOpacity={0.75}>
+        <TouchableOpacity
+          ref={addChildBtnRef}
+          style={styles.addChildBtn}
+          onPress={() => {
+            if (!hasFamilyAccess(profile)) {
+              Alert.alert(
+                "Aile Özelliği",
+                "Çocuk ekleyebilmek için Aile üyeliğinizin aktif olması gerekir.",
+                [
+                  { text: "Vazgeç", style: "cancel" },
+                  { text: "Profilim", onPress: () => router.push("/(tabs)/profile") },
+                ]
+              );
+              return;
+            }
+            setShowAddChild(true);
+          }}
+          activeOpacity={0.75}
+        >
           <MaterialIcons name="add" size={16} color={Colors.primary} />
           <Text style={styles.addChildBtnText}>Çocuk Ekle</Text>
         </TouchableOpacity>

@@ -19,12 +19,13 @@ import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Colors, Shadows, Radius } from "../../constants/Colors";
 import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
-import { getAllMedicines, addMedicine, deleteMedicine } from "../../services/database";
+import { getAllMedicines, addMedicine, deleteMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { Medicine } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTutorial } from "../../context/TutorialContext";
+import { useAuth } from "../../context/AuthContext";
 
 const SAMPLE_TUTORIAL_MEDICINE = {
   name: "Parol 500mg Tablet",
@@ -103,6 +104,7 @@ export default function CabinetScreen() {
   const [form, setForm] = useState<FormState>({});
 
   const { openAdd } = useLocalSearchParams<{ openAdd?: string }>();
+  const { profile } = useAuth();
   const tutorial = useTutorial();
   const addBtnRef = useRef<View>(null);
   const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "cabinet-analysis";
@@ -542,7 +544,7 @@ export default function CabinetScreen() {
                       <Text style={styles.changePhotoText}>Değiştir</Text>
                     </TouchableOpacity>
                   </View>
-                ) : (
+                ) : hasAiAccess(profile) ? (
                   <View style={styles.photoPickerArea}>
                     <View style={styles.photoPickerIcon}>
                       <MaterialIcons name="photo-camera" size={36} color={Colors.primary} />
@@ -553,6 +555,14 @@ export default function CabinetScreen() {
                       <Button title="Kamera" onPress={() => pickAndAnalyze(true)} variant="primary" size="md" icon={<MaterialIcons name="photo-camera" size={16} color={Colors.textInverse} />} style={styles.photoBtn} />
                       <Button title="Galeri" onPress={() => pickAndAnalyze(false)} variant="outline" size="md" icon={<MaterialIcons name="photo-library" size={16} color={Colors.primary} />} style={styles.photoBtn} />
                     </View>
+                  </View>
+                ) : (
+                  <View style={styles.photoPickerArea}>
+                    <View style={styles.photoPickerIcon}>
+                      <Ionicons name="lock-closed" size={28} color={Colors.textMuted} />
+                    </View>
+                    <Text style={styles.photoPickerTitle}>Fotoğrafla AI Doldursun</Text>
+                    <Text style={styles.photoPickerSubtitle}>Bu özellik Premium'da açılır — aşağıdaki formu elle de doldurabilirsin.</Text>
                   </View>
                 )}
               </View>

@@ -58,9 +58,16 @@ Deno.serve(async (req: Request) => {
     await authClient.auth.signOut().catch(() => {});
 
     if (insertError) {
+      // RLS ihlali (has_family_access=false) muhtemelen budur — ham Postgres
+      // hata metni yerine anlaşılır bir mesaj dönüyoruz.
+      const isRlsViolation = insertError.code === "42501" || /row-level security/i.test(insertError.message);
       return new Response(
-        JSON.stringify({ error: insertError.message }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({
+          error: isRlsViolation
+            ? "Bu hesapta aile özelliği aktif değil."
+            : insertError.message,
+        }),
+        { status: isRlsViolation ? 403 : 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 

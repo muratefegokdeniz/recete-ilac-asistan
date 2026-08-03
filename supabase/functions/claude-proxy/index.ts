@@ -46,6 +46,22 @@ Deno.serve(async (req: Request) => {
       });
     }
 
+    // Üyelik kademesi kontrolü — istemci tarafındaki kilitler (EmptyState vb.)
+    // sadece UX içindir, asıl erişim kontrolü burada yapılır: has_ai_access
+    // olmayan bir hesap, arayüzü atlayıp bu fonksiyonu doğrudan çağırsa bile
+    // Anthropic'e hiç ulaşamaz.
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("has_ai_access")
+      .eq("id", user.id)
+      .single();
+    if (profileError || !profile?.has_ai_access) {
+      return new Response(JSON.stringify({ error: "Bu hesapta AI özellikleri aktif değil" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { model, max_tokens, system, messages } = await req.json();
 
     if (!model || !max_tokens || !messages) {

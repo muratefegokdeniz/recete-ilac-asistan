@@ -1,7 +1,7 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Switch,
+  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -17,6 +17,7 @@ import {
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
   setVaccineCompleted, setVaccineNotificationId,
   getPendingChildLinkRequests, respondToChildLinkRequest, ChildLinkRequest,
+  hasFamilyAccess, getTierLabel,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
@@ -32,8 +33,6 @@ export default function ProfileScreen() {
   const [draft, setDraft] = useState<UserProfile>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [premiumSaving, setPremiumSaving] = useState(false);
-  const [premiumError, setPremiumError] = useState<string | null>(null);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
@@ -196,22 +195,6 @@ export default function ProfileScreen() {
     setShowSignOutConfirm(true);
   }
 
-  async function handleTogglePremium(value: boolean) {
-    setPremiumSaving(true);
-    setPremiumError(null);
-    const previous = profile;
-    setProfile((p) => ({ ...p, isPremium: value }));
-    try {
-      await saveProfile({ ...profile, isPremium: value });
-    } catch (e: any) {
-      console.error("premium toggle hatası:", e);
-      setProfile(previous);
-      setPremiumError(e?.message ?? "Güncellenemedi. Lütfen tekrar deneyin.");
-    } finally {
-      setPremiumSaving(false);
-    }
-  }
-
   return (
     <SafeAreaView style={styles.container} edges={["top"]}>
       <View style={styles.header}>
@@ -257,15 +240,19 @@ export default function ProfileScreen() {
                   >
                     <Text style={styles.pendingDenyText}>Reddet</Text>
                   </TouchableOpacity>
-                  <TouchableOpacity
-                    style={styles.pendingApproveBtn}
-                    onPress={() => handleRespond(req.id, true)}
-                    disabled={respondingId === req.id}
-                  >
-                    {respondingId === req.id
-                      ? <ActivityIndicator size="small" color="white" />
-                      : <Text style={styles.pendingApproveText}>Onayla</Text>}
-                  </TouchableOpacity>
+                  {hasFamilyAccess(profile) ? (
+                    <TouchableOpacity
+                      style={styles.pendingApproveBtn}
+                      onPress={() => handleRespond(req.id, true)}
+                      disabled={respondingId === req.id}
+                    >
+                      {respondingId === req.id
+                        ? <ActivityIndicator size="small" color="white" />
+                        : <Text style={styles.pendingApproveText}>Onayla</Text>}
+                    </TouchableOpacity>
+                  ) : (
+                    <Text style={styles.pendingLockedNote}>Onaylamak için Aile üyeliği gerekir.</Text>
+                  )}
                 </View>
               </View>
             ))}
@@ -277,27 +264,10 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Üyelik</Text>
           <View style={styles.premiumRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.premiumLabel}>Premium</Text>
-              <Text style={styles.premiumSub}>
-                {profile.isPremium ? "Premium üyeliğiniz aktif." : "Şu an ücretsiz plandasınız."}
-              </Text>
+              <Text style={styles.premiumLabel}>{getTierLabel(profile)}</Text>
+              <Text style={styles.premiumSub}>Üyelik yükseltme yakında burada olacak.</Text>
             </View>
-            {premiumSaving
-              ? <ActivityIndicator size="small" color={Colors.primary} />
-              : (
-                <Switch
-                  value={!!profile.isPremium}
-                  onValueChange={handleTogglePremium}
-                  trackColor={{ false: Colors.border, true: Colors.primaryLight }}
-                  thumbColor={profile.isPremium ? Colors.primary : undefined}
-                />
-              )}
           </View>
-          {premiumError && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorText}>{premiumError}</Text>
-            </View>
-          )}
         </View>
 
         {/* Kişisel Bilgiler */}
@@ -729,6 +699,7 @@ const styles = StyleSheet.create({
   pendingDenyText: { fontSize: 13, fontWeight: "600", color: Colors.textSecondary },
   pendingApproveBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: Radius.md, backgroundColor: Colors.primary, minWidth: 70, alignItems: "center" },
   pendingApproveText: { fontSize: 13, fontWeight: "700", color: "white" },
+  pendingLockedNote: { fontSize: 11.5, color: Colors.textMuted, maxWidth: 110, textAlign: "right" },
 
   // Aşı Kartları
   vaccineChildRow: { gap: 8, paddingBottom: 12 },

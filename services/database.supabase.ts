@@ -99,16 +99,29 @@ export interface UserProfile {
   bloodType?: string;
   chronicConditions?: string;
   allergies?: string;
-  isPremium?: boolean;
+  hasAiAccess?: boolean;
+  hasFamilyAccess?: boolean;
 }
 
-// Ödeme altyapısı henüz yok (gerçek satın alma ekranı bu sprintte kapsam dışı) —
-// bu sadece erişim kontrolünü tek bir yerden yönetmek için bir yardımcı.
-// Çocuk profilleri ayrı bir hesap/ödeme olmadığı için ebeveynin verisine zaten
-// erişiyor, dolayısıyla her zaman erişimi var sayılır.
-export function hasAccess(profile: UserProfile | null, isChildProfile: boolean = false): boolean {
-  if (isChildProfile) return true;
-  return !!profile?.isPremium;
+// Üyelik kademesi 2 bağımsız eksenden oluşuyor (AI erişimi × aile erişimi),
+// tek bir "premium" sıralaması değil — bkz. membership_tiers_decision.
+// Bu iki alan sadece service_role tarafından yazılabiliyor (DB trigger,
+// bkz. lock_membership_tier_columns), saveProfile() bunları hiç göndermiyor.
+export function hasAiAccess(profile: UserProfile | null): boolean {
+  return !!profile?.hasAiAccess;
+}
+
+export function hasFamilyAccess(profile: UserProfile | null): boolean {
+  return !!profile?.hasFamilyAccess;
+}
+
+export function getTierLabel(profile: UserProfile | null): string {
+  const ai = hasAiAccess(profile);
+  const family = hasFamilyAccess(profile);
+  if (ai && family) return "Premium + Aile";
+  if (ai) return "Premium";
+  if (family) return "Aile";
+  return "Standart";
 }
 
 // ─── Init ───────────────────────────────────────────────────────────────────
@@ -380,10 +393,15 @@ export async function getProfile(): Promise<UserProfile | null> {
     bloodType: data.blood_type ?? undefined,
     chronicConditions: data.chronic_conditions ?? undefined,
     allergies: data.allergies ?? undefined,
-    isPremium: data.is_premium ?? false,
+    hasAiAccess: data.has_ai_access ?? false,
+    hasFamilyAccess: data.has_family_access ?? false,
   };
 }
 
+// has_ai_access/has_family_access buraya BİLEREK dahil edilmiyor — bu alanlar
+// sadece service_role tarafından (ödeme webhook'u/admin) yazılabilmeli, client
+// hiçbir zaman göndermemeli. DB'deki trigger zaten bunu zorunlu kılıyor, bu
+// sadece istemci tarafında da o alışkanlığı hiç oluşturmama tercihi.
 export async function saveProfile(profile: UserProfile): Promise<void> {
   const userId = await getUserId();
   if (!userId) throw new Error("Giriş yapılmamış");
@@ -397,7 +415,6 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
     blood_type: profile.bloodType ?? null,
     chronic_conditions: profile.chronicConditions ?? null,
     allergies: profile.allergies ?? null,
-    is_premium: profile.isPremium ?? false,
     updated_at: new Date().toISOString(),
   });
   if (error) throw error;
