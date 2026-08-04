@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -63,6 +63,7 @@ export default function PrescriptionScreen() {
   const [deleting, setDeleting] = useState(false);
   const [analysis, setAnalysis] = useState<PrescriptionAnalysis | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [showAiLockModal, setShowAiLockModal] = useState(false);
 
   // Manual entry state
   const [manualDoctor, setManualDoctor] = useState("");
@@ -122,14 +123,7 @@ export default function PrescriptionScreen() {
     // dayanıyor, AI'sız bir kayıt yolu yok — bu yüzden ekranı hiç açmadan
     // burada kilitliyoruz.
     if (!hasAiAccess(profile)) {
-      Alert.alert(
-        "Premium Özellik",
-        "Reçete ekleme AI destekli bir özelliktir, Premium üyeliğinizin aktif olması gerekir.",
-        [
-          { text: "Vazgeç", style: "cancel" },
-          { text: "Üyelikleri Gör", onPress: () => router.push("/membership") },
-        ]
-      );
+      setShowAiLockModal(true);
       return;
     }
     setImageUri(null);
@@ -796,6 +790,14 @@ export default function PrescriptionScreen() {
           </SafeAreaView>
         )}
       </Modal>
+
+      <UpgradePromptModal
+        visible={showAiLockModal}
+        title="Premium Özellik"
+        message="Reçete ekleme AI destekli bir özelliktir, Premium üyeliğinizin aktif olması gerekir."
+        onClose={() => setShowAiLockModal(false)}
+        onUpgrade={() => { setShowAiLockModal(false); router.push("/membership"); }}
+      />
     </SafeAreaView>
   );
 }

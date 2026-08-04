@@ -3,13 +3,13 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image, useWindowDimensions, Alert,
+  Platform, Image, useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField, UpgradePromptModal } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useTutorial } from "../../context/TutorialContext";
@@ -65,6 +65,7 @@ export default function ActiveScreen() {
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
+  const [showFamilyLockModal, setShowFamilyLockModal] = useState(false);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
   const tutorial = useTutorial();
   const addChildBtnRef = useRef<View>(null);
@@ -348,14 +349,7 @@ export default function ActiveScreen() {
           style={styles.addChildBtn}
           onPress={() => {
             if (!hasFamilyAccess(profile)) {
-              Alert.alert(
-                "Aile Özelliği",
-                "Çocuk ekleyebilmek için Aile üyeliğinizin aktif olması gerekir.",
-                [
-                  { text: "Vazgeç", style: "cancel" },
-                  { text: "Üyelikleri Gör", onPress: () => router.push("/membership") },
-                ]
-              );
+              setShowFamilyLockModal(true);
               return;
             }
             setShowAddChild(true);
@@ -683,6 +677,14 @@ export default function ActiveScreen() {
           setSelectedMember(created.name);
           setShowAddChild(false);
         }}
+      />
+
+      <UpgradePromptModal
+        visible={showFamilyLockModal}
+        title="Aile Özelliği"
+        message="Çocuk ekleyebilmek için Aile üyeliğinizin aktif olması gerekir."
+        onClose={() => setShowFamilyLockModal(false)}
+        onUpgrade={() => { setShowFamilyLockModal(false); router.push("/membership"); }}
       />
     </SafeAreaView>
   );

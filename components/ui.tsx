@@ -662,6 +662,53 @@ export function ConfirmModal({
   );
 }
 
+// ─── UpgradePromptModal ───────────────────────────────────────────────────────
+// Alert.alert web'de (react-native-web) hiçbir şey göstermiyor — üyelik
+// kilitleri için platformdan bağımsız çalışan bu modal kullanılıyor.
+export function UpgradePromptModal({
+  visible,
+  title,
+  message,
+  onClose,
+  onUpgrade,
+}: {
+  visible: boolean;
+  title: string;
+  message: string;
+  onClose: () => void;
+  onUpgrade: () => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={confirmStyles.overlay}>
+        <View style={confirmStyles.dialog}>
+          <Text style={confirmStyles.title}>{title}</Text>
+          <Text style={confirmStyles.message}>{message}</Text>
+          <View style={confirmStyles.buttons}>
+            <TouchableOpacity style={confirmStyles.cancelBtn} onPress={onClose} activeOpacity={0.8}>
+              <Text style={confirmStyles.cancelText}>Vazgeç</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={upgradeStyles.upgradeBtn} onPress={onUpgrade} activeOpacity={0.8}>
+              <Text style={upgradeStyles.upgradeText}>Üyelikleri Gör</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const upgradeStyles = StyleSheet.create({
+  upgradeBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: Radius.lg,
+    backgroundColor: Colors.primary,
+    alignItems: "center",
+  },
+  upgradeText: { fontSize: 14, fontWeight: "700", color: Colors.textInverse },
+});
+
 const confirmStyles = StyleSheet.create({
   overlay: {
     flex: 1,
