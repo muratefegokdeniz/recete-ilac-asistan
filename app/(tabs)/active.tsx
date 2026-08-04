@@ -348,7 +348,10 @@ export default function ActiveScreen() {
           ref={addChildBtnRef}
           style={styles.addChildBtn}
           onPress={() => {
-            if (!hasFamilyAccess(profile)) {
+            // Eğitici bu adımı gösteriyorsa üyelik durumundan bağımsız
+            // formu açıyoruz — tur bittiğinde kilit geri döner.
+            const isTutorialStep = tutorial.active && tutorial.currentStep?.id === "addChild";
+            if (!hasFamilyAccess(profile) && !isTutorialStep) {
               setShowFamilyLockModal(true);
               return;
             }

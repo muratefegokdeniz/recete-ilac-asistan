@@ -121,8 +121,12 @@ export default function PrescriptionScreen() {
   function openScanner() {
     // Reçete ekleme (fotoğraf VE manuel giriş sekmesi) tamamen AI analizine
     // dayanıyor, AI'sız bir kayıt yolu yok — bu yüzden ekranı hiç açmadan
-    // burada kilitliyoruz.
-    if (!hasAiAccess(profile)) {
+    // burada kilitliyoruz. İstisna: eğitici bu adımı gösteriyorsa (üyelik
+    // durumundan bağımsız) kilitlemiyoruz — tur bittiğinde kilit geri döner,
+    // "analiz" adımı zaten sahte/örnek veriyle gösteriliyor, gerçek AI
+    // çağrısı yapılmıyor.
+    const isTutorialStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-intro";
+    if (!hasAiAccess(profile) && !isTutorialStep) {
       setShowAiLockModal(true);
       return;
     }
