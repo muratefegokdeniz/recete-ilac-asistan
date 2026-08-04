@@ -127,7 +127,7 @@ export default function PrescriptionScreen() {
         "Reçete ekleme AI destekli bir özelliktir, Premium üyeliğinizin aktif olması gerekir.",
         [
           { text: "Vazgeç", style: "cancel" },
-          { text: "Profilim", onPress: () => router.push("/(tabs)/profile") },
+          { text: "Üyelikleri Gör", onPress: () => router.push("/(tabs)/profile") },
         ]
       );
       return;

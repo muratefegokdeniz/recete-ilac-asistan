@@ -17,7 +17,7 @@ import {
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
   setVaccineCompleted, setVaccineNotificationId,
   getPendingChildLinkRequests, respondToChildLinkRequest, ChildLinkRequest,
-  hasFamilyAccess, getTierLabel,
+  hasAiAccess, hasFamilyAccess, getTierLabel,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
@@ -25,6 +25,13 @@ import { fallbackMemberColor } from "../../constants/MemberColors";
 
 const GENDER_OPTIONS = ["Erkek", "Kadın", "Belirtmek istemiyorum"];
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyorum"];
+
+const TIER_TABLE: { label: string; hasAi: boolean; hasFamily: boolean }[] = [
+  { label: "Standart", hasAi: false, hasFamily: false },
+  { label: "Aile", hasAi: false, hasFamily: true },
+  { label: "Premium", hasAi: true, hasFamily: false },
+  { label: "Premium + Aile", hasAi: true, hasFamily: true },
+];
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
@@ -264,9 +271,41 @@ export default function ProfileScreen() {
           <Text style={styles.sectionTitle}>Üyelik</Text>
           <View style={styles.premiumRow}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.premiumLabel}>{getTierLabel(profile)}</Text>
+              <Text style={styles.premiumLabel}>Şu anki planınız: {getTierLabel(profile)}</Text>
               <Text style={styles.premiumSub}>Üyelik yükseltme yakında burada olacak.</Text>
             </View>
+          </View>
+
+          <View style={styles.tierTable}>
+            <View style={styles.tierHeaderRow}>
+              <Text style={[styles.tierHeaderCell, { flex: 1.4 }]}>Plan</Text>
+              <Text style={styles.tierHeaderCell}>AI</Text>
+              <Text style={styles.tierHeaderCell}>Aile</Text>
+            </View>
+            {TIER_TABLE.map((tier) => {
+              const isCurrent = tier.hasAi === hasAiAccess(profile) && tier.hasFamily === hasFamilyAccess(profile);
+              return (
+                <View key={tier.label} style={[styles.tierRow, isCurrent && styles.tierRowActive]}>
+                  <Text style={[styles.tierRowLabel, { flex: 1.4 }, isCurrent && styles.tierRowLabelActive]}>
+                    {tier.label}{isCurrent ? " (şu anki)" : ""}
+                  </Text>
+                  <View style={styles.tierCell}>
+                    <MaterialIcons
+                      name={tier.hasAi ? "check-circle" : "remove-circle-outline"}
+                      size={18}
+                      color={tier.hasAi ? Colors.primary : Colors.textMuted}
+                    />
+                  </View>
+                  <View style={styles.tierCell}>
+                    <MaterialIcons
+                      name={tier.hasFamily ? "check-circle" : "remove-circle-outline"}
+                      size={18}
+                      color={tier.hasFamily ? Colors.primary : Colors.textMuted}
+                    />
+                  </View>
+                </View>
+              );
+            })}
           </View>
         </View>
 
@@ -617,6 +656,17 @@ const styles = StyleSheet.create({
   premiumRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   premiumLabel: { fontSize: 15, fontWeight: "700", color: Colors.text },
   premiumSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  tierTable: { marginTop: 14, borderRadius: Radius.md, borderWidth: 1, borderColor: Colors.border, overflow: "hidden" },
+  tierHeaderRow: { flexDirection: "row", backgroundColor: Colors.surfaceAlt, paddingVertical: 8, paddingHorizontal: 12 },
+  tierHeaderCell: { flex: 1, fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", textAlign: "center" },
+  tierRow: {
+    flexDirection: "row", alignItems: "center", paddingVertical: 10, paddingHorizontal: 12,
+    borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  tierRowActive: { backgroundColor: Colors.primaryLight },
+  tierRowLabel: { fontSize: 13.5, fontWeight: "600", color: Colors.text },
+  tierRowLabelActive: { color: Colors.primary, fontWeight: "800" },
+  tierCell: { flex: 1, alignItems: "center" },
 
   infoRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
   infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
