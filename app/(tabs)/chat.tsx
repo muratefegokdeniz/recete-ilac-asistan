@@ -167,7 +167,7 @@ export default function ChatScreen() {
           icon={<Ionicons name="lock-closed" size={32} color={Colors.textMuted} />}
           title="AI Asistan Premium'da"
           description="Sohbet asistanı, reçete/ilaç analizi gibi AI özellikleri Premium üyelikte açılır."
-          action={{ label: "Üyelikleri Gör", onPress: () => router.push("/(tabs)/profile") }}
+          action={{ label: "Üyelikleri Gör", onPress: () => router.push("/membership") }}
         />
       </SafeAreaView>
     );

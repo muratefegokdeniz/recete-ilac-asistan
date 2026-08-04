@@ -104,6 +104,7 @@ function RootNavigator() {
         <Stack.Screen name="(tabs)" />
         <Stack.Screen name="login" />
         <Stack.Screen name="child-home" />
+        <Stack.Screen name="membership" />
       </Stack>
       <TutorialOverlay />
     </>

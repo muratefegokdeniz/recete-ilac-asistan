@@ -353,7 +353,7 @@ export default function ActiveScreen() {
                 "Çocuk ekleyebilmek için Aile üyeliğinizin aktif olması gerekir.",
                 [
                   { text: "Vazgeç", style: "cancel" },
-                  { text: "Üyelikleri Gör", onPress: () => router.push("/(tabs)/profile") },
+                  { text: "Üyelikleri Gör", onPress: () => router.push("/membership") },
                 ]
               );
               return;
