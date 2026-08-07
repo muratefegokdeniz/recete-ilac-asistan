@@ -542,7 +542,7 @@ export default function PrescriptionScreen() {
           )}
 
           {/* Tab switcher */}
-          {!analysis && !isTutorialAnalysisStep && (
+          {!analysis && !isTutorialAnalysisStep && !isTutorialScannerStep && (
             <View style={styles.scannerTabBar}>
               <TouchableOpacity
                 style={[styles.scannerTab, scannerTab === "photo" && styles.scannerTabActive]}
@@ -565,7 +565,7 @@ export default function PrescriptionScreen() {
             </View>
           )}
 
-          {!isTutorialAnalysisStep && (
+          {!isTutorialAnalysisStep && !isTutorialScannerStep && (
           <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
             {/* ── PHOTO TAB ── */}

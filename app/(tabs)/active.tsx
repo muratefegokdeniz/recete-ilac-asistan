@@ -672,6 +672,15 @@ export default function ActiveScreen() {
         mode="create"
         onCancel={() => setShowAddChild(false)}
         onSave={async (member) => {
+          // Eğitici bu formu üyelik kontrolünden bağımsız açıyor (bkz. "Çocuk
+          // Ekle" butonundaki isTutorialStep istisnası) — ama gerçek kaydı
+          // burada ayrıca kilitliyoruz, yoksa Aile erişimi olmayan biri turu
+          // kullanarak paywall'ı kalıcı olarak atlatabilir.
+          if (!hasFamilyAccess(profile)) {
+            setShowAddChild(false);
+            setShowFamilyLockModal(true);
+            return;
+          }
           const created = await addFamilyMember(member);
           await loadFamilyMembers();
           if (hiddenChildren.includes(created.name)) {
