@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -22,6 +22,7 @@ import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMed
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
 import { SavedPrescription, PrescriptionAnalysis, PrescriptionMedicine, ActiveMedicine } from "../../types";
 import { useTutorial } from "../../context/TutorialContext";
+import { useTutorialHighlight } from "../../hooks/useTutorialHighlight";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useAuth } from "../../context/AuthContext";
 
@@ -75,7 +76,7 @@ export default function PrescriptionScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const tutorial = useTutorial();
-  const addBtnRef = useRef<View>(null);
+  const { ref: addBtnRef, onLayout: addBtnOnLayout } = useTutorialHighlight("prescriptionsAdd");
   const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-analysis";
   const isTutorialScannerStep = tutorial.active && tutorial.currentStep?.id === "prescriptions-scanner";
 
@@ -84,16 +85,6 @@ export default function PrescriptionScreen() {
       loadPrescriptions();
     }, [])
   );
-
-  useEffect(() => {
-    if (!(tutorial.active && tutorial.currentStep?.targetId === "prescriptionsAdd")) return;
-    const t = setTimeout(() => {
-      addBtnRef.current?.measureInWindow((x, y, width, height) => {
-        tutorial.reportHighlightTarget("prescriptionsAdd", { x, y, width, height });
-      });
-    }, 150);
-    return () => clearTimeout(t);
-  }, [tutorial.active, tutorial.stepIndex]);
 
   useEffect(() => {
     if (openScannerParam === "1") {
@@ -336,7 +327,7 @@ export default function PrescriptionScreen() {
           <Text style={styles.headerSubtitle}>{prescriptions.length} reçete kayıtlı</Text>
         </View>
         <View style={styles.headerRight}>
-          <View ref={addBtnRef} collapsable={false}>
+          <View ref={addBtnRef} onLayout={addBtnOnLayout} collapsable={false}>
             <Button
               title="Ekle"
               onPress={openScanner}
@@ -508,16 +499,52 @@ export default function PrescriptionScreen() {
           </View>
 
           {isTutorialScannerStep && (
-            <View style={styles.tutorialScannerBanner}>
-              <Ionicons name="information-circle" size={18} color={Colors.primary} />
-              <Text style={styles.tutorialScannerBannerText}>
-                Reçete ekleme ekranı bu şekilde açılır: "Fotoğraf" sekmesinde kamerayla çekip galeriden seçebilir, "Manuel Giriş" sekmesinde elle yazabilirsin.
-              </Text>
-              <TouchableOpacity style={styles.tutorialScannerBannerBtn} onPress={() => tutorial.next()} activeOpacity={0.85}>
-                <Text style={styles.tutorialScannerBannerBtnText}>İleri</Text>
-                <Ionicons name="arrow-forward" size={14} color={Colors.textInverse} />
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <View style={styles.tutorialIntroCard}>
+                <Ionicons name="camera" size={22} color={Colors.primary} />
+                <Text style={styles.tutorialIntroTitle}>Reçete Ekleme Ekranı</Text>
+                <Text style={styles.tutorialIntroBody}>
+                  Karşına bu ekran çıkıyor: üstte "Fotoğraf" ve "Manuel Giriş" sekmeleri var. Fotoğraf sekmesinde kamerayla anında çekebilir ya da galeriden seçebilirsin.
+                </Text>
+              </View>
+              {/* Gerçek ekranın statik önizlemesi — üyelik kontrolünden bağımsız
+                  gösterilen bu turda gerçek AI çağrısı yapılmasın diye dokunulamaz. */}
+              <View pointerEvents="none">
+                <View style={styles.scannerTabBar}>
+                  <View style={[styles.scannerTab, styles.scannerTabActive]}>
+                    <Ionicons name="camera" size={16} color={Colors.primary} />
+                    <Text style={[styles.scannerTabText, styles.scannerTabTextActive]}>Fotoğraf</Text>
+                  </View>
+                  <View style={styles.scannerTab}>
+                    <Ionicons name="create" size={16} color={Colors.textMuted} />
+                    <Text style={styles.scannerTabText}>Manuel Giriş</Text>
+                  </View>
+                </View>
+                <View style={styles.uploadArea}>
+                  <View style={styles.uploadIconCircle}>
+                    <Ionicons name="camera" size={40} color={Colors.primary} />
+                  </View>
+                  <Text style={styles.uploadTitle}>Reçetenizi Ekleyin</Text>
+                  <Text style={styles.uploadDescription}>
+                    Reçetenizi fotoğraflayın veya galeriden seçin. AI tüm ilaçları otomatik analiz edecek.
+                  </Text>
+                  <View style={styles.uploadButtons}>
+                    <Button title="Fotoğraf Çek" onPress={() => {}} variant="primary" disabled
+                      icon={<Ionicons name="camera" size={16} color="white" />} size="lg" style={{ width: "100%" }} />
+                    <Button title="Galeriden Seç" onPress={() => {}} variant="outline" disabled
+                      icon={<Ionicons name="images" size={16} color={Colors.primary} />} size="lg" style={{ width: "100%" }} />
+                  </View>
+                </View>
+              </View>
+              <TouchableOpacity
+                style={styles.tutorialContinueBtn}
+                onPress={() => tutorial.next()}
+                activeOpacity={0.85}
+              >
+                <Text style={styles.tutorialContinueBtnText}>İleri</Text>
+                <Ionicons name="arrow-forward" size={16} color={Colors.textInverse} />
               </TouchableOpacity>
-            </View>
+            </ScrollView>
           )}
 
           {isTutorialAnalysisStep && (
@@ -1196,18 +1223,6 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary, borderRadius: Radius.lg, paddingVertical: 15, marginTop: 4,
   },
   tutorialContinueBtnText: { color: Colors.textInverse, fontSize: 15, fontWeight: "700" },
-
-  tutorialScannerBanner: {
-    flexDirection: "row", alignItems: "center", gap: 10,
-    backgroundColor: Colors.primaryLight, borderBottomWidth: 1, borderBottomColor: Colors.primary + "30",
-    paddingHorizontal: 16, paddingVertical: 12,
-  },
-  tutorialScannerBannerText: { flex: 1, fontSize: 12.5, color: Colors.primaryDark, lineHeight: 17 },
-  tutorialScannerBannerBtn: {
-    flexDirection: "row", alignItems: "center", gap: 4,
-    backgroundColor: Colors.primary, paddingHorizontal: 12, paddingVertical: 8, borderRadius: Radius.full,
-  },
-  tutorialScannerBannerBtnText: { color: Colors.textInverse, fontSize: 12.5, fontWeight: "700" },
 
   successBanner: {
     flexDirection: "row", alignItems: "center", gap: 8,

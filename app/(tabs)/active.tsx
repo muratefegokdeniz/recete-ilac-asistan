@@ -1,11 +1,12 @@
-import React, { useState, useCallback, useRef, useEffect } from "react";
+import React, { useState, useCallback, useRef } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   View, Text, ScrollView, StyleSheet, Modal,
   TouchableOpacity, TextInput, KeyboardAvoidingView,
-  Platform, Image, useWindowDimensions,
+  Platform, Image, useWindowDimensions, ActivityIndicator,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
@@ -13,6 +14,7 @@ import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, Ti
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useTutorial } from "../../context/TutorialContext";
+import { useTutorialHighlight } from "../../hooks/useTutorialHighlight";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
   markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
@@ -22,11 +24,11 @@ import {
 import { ActiveMedicine, TakenDose, Medicine, FamilyMember } from "../../types";
 import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
 import { requestPermissions, scheduleDailyReminder, cancelReminders, notifyMissedChildDose } from "../../services/notifications";
-import { getSkipAdvice } from "../../services/anthropic";
+import { getSkipAdvice, analyzeMedicineImage } from "../../services/anthropic";
 import { fallbackMemberColor } from "../../constants/MemberColors";
 import { useAuth } from "../../context/AuthContext";
 
-type AddMode = "manual" | "cabinet";
+type AddMode = "manual" | "cabinet" | "photo";
 interface DueReminder { medicineId: string; medicineName: string; time: string; }
 
 const SKIP_REASONS = [
@@ -66,19 +68,12 @@ export default function ActiveScreen() {
   const [hiddenChildren, setHiddenChildren] = useState<string[]>([]);
   const [showAddChild, setShowAddChild] = useState(false);
   const [showFamilyLockModal, setShowFamilyLockModal] = useState(false);
+  const [showAiLockModal, setShowAiLockModal] = useState(false);
+  const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
   const tutorial = useTutorial();
-  const addChildBtnRef = useRef<View>(null);
-
-  useEffect(() => {
-    if (!(tutorial.active && tutorial.currentStep?.targetId === "addChild")) return;
-    const t = setTimeout(() => {
-      addChildBtnRef.current?.measureInWindow((x, y, width, height) => {
-        tutorial.reportHighlightTarget("addChild", { x, y, width, height });
-      });
-    }, 150);
-    return () => clearTimeout(t);
-  }, [tutorial.active, tutorial.stepIndex]);
+  const { ref: addChildBtnRef, onLayout: addChildBtnOnLayout } = useTutorialHighlight("addChild");
 
   useFocusEffect(useCallback(() => {
     loadFamilyMembers();
@@ -157,6 +152,7 @@ export default function ActiveScreen() {
     setCabinetMedicines(cabinet);
     setShowModal(true);
     setAddMode("manual");
+    setPhotoError(null);
     resetForm();
   }
 
@@ -172,6 +168,55 @@ export default function ActiveScreen() {
       reminderTimes: calcReminderTimes(f.reminderTimes[0] ?? "08:00", freq),
     }));
     setAddMode("manual");
+  }
+
+  // Frequency/mealTiming'i AI'nın serbest metninden değil, kullanıcının
+  // FrequencyPicker/MealTimingPicker'dan seçmesinden alıyoruz — calcReminderTimes
+  // sabit bir string eşlemesine güveniyor, tutmayan bir AI metni hatırlatma
+  // saatlerini sessizce yanlış hesaplatabilir. AI sadece isim/doz/not dolduruyor,
+  // kullanıcı sıklığı ve saatleri manuel formda gözden geçirip onaylıyor.
+  async function pickAndAnalyzePhoto(fromCamera: boolean) {
+    setPhotoError(null);
+    let result: ImagePicker.ImagePickerResult;
+    if (fromCamera) {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== "granted") {
+        setPhotoError("Kamera erişimi için lütfen izin verin.");
+        return;
+      }
+      result = await ImagePicker.launchCameraAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, base64: true, quality: 0.85 });
+    } else {
+      result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, base64: true, quality: 0.85 });
+    }
+    if (result.canceled || !result.assets[0]) return;
+
+    const asset = result.assets[0];
+    setAnalyzingPhoto(true);
+    try {
+      let base64 = asset.base64 ?? null;
+      if (!base64) base64 = await uriToBase64(asset.uri);
+      if (!base64) {
+        setPhotoError("Fotoğraf okunamadı, lütfen tekrar deneyin.");
+        return;
+      }
+      const mimeType = asset.mimeType ?? detectMimeType(base64);
+      const info = await analyzeMedicineImage(base64, mimeType);
+      const mt = info.instructions ? parseMealTiming(info.instructions) : null;
+      const notesParts = [info.purpose, info.instructions].filter(Boolean);
+      setForm((f) => ({
+        ...f,
+        medicineName: info.name || f.medicineName,
+        dosage: info.dosage || f.dosage,
+        mealTiming: mt ?? f.mealTiming,
+        notes: notesParts.length > 0 ? notesParts.join(" ") : f.notes,
+        fromCabinetId: "",
+      }));
+      setAddMode("manual");
+    } catch (e: any) {
+      setPhotoError(e?.message ?? "Fotoğraf analiz edilirken bir hata oluştu.");
+    } finally {
+      setAnalyzingPhoto(false);
+    }
   }
 
   async function handleAdd() {
@@ -346,6 +391,7 @@ export default function ActiveScreen() {
         ))}
         <TouchableOpacity
           ref={addChildBtnRef}
+          onLayout={addChildBtnOnLayout}
           style={styles.addChildBtn}
           onPress={() => {
             // Eğitici bu adımı gösteriyorsa üyelik durumundan bağımsız
@@ -467,11 +513,54 @@ export default function ActiveScreen() {
                 <View style={styles.modeBadge}><Text style={styles.modeBadgeText}>{cabinetMedicines.length}</Text></View>
               )}
             </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.modeTab, addMode === "photo" && styles.modeTabActive]}
+              onPress={() => {
+                if (!hasAiAccess(profile)) { setShowAiLockModal(true); return; }
+                setPhotoError(null);
+                setAddMode("photo");
+              }}
+            >
+              <MaterialIcons name="photo-camera" size={16} color={addMode === "photo" ? Colors.primary : Colors.textMuted} />
+              <Text style={[styles.modeTabText, addMode === "photo" && styles.modeTabTextActive]}>AI Fotoğraf</Text>
+            </TouchableOpacity>
           </View>
 
           <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined} style={{ flex: 1 }}>
             {addMode === "cabinet" ? (
               <CabinetPicker medicines={cabinetMedicines} onSelect={selectFromCabinet} />
+            ) : addMode === "photo" ? (
+              <View style={styles.photoModeArea}>
+                {analyzingPhoto ? (
+                  <>
+                    <ActivityIndicator size="large" color={Colors.primary} />
+                    <Text style={styles.photoModeTitle}>Fotoğraf analiz ediliyor...</Text>
+                    <Text style={styles.photoModeDesc}>Bu birkaç saniye sürebilir</Text>
+                  </>
+                ) : (
+                  <>
+                    <View style={styles.photoModeIconCircle}>
+                      <MaterialIcons name="photo-camera" size={40} color={Colors.primary} />
+                    </View>
+                    <Text style={styles.photoModeTitle}>İlacı Fotoğrafla</Text>
+                    <Text style={styles.photoModeDesc}>
+                      İlacın kutusunu fotoğrafla, AI ismini ve dozunu otomatik doldursun — sıklığı ve saatleri sonraki adımda kendin ayarlarsın.
+                    </Text>
+                    {photoError && (
+                      <View style={styles.addErrorBox}>
+                        <MaterialIcons name="error-outline" size={16} color={Colors.danger} />
+                        <Text style={styles.addErrorText}>{photoError}</Text>
+                      </View>
+                    )}
+                    <View style={{ gap: 10, width: "100%", marginTop: 4 }}>
+                      <Button title="Fotoğraf Çek" onPress={() => pickAndAnalyzePhoto(true)} variant="primary"
+                        icon={<MaterialIcons name="photo-camera" size={16} color={Colors.textInverse} />} size="lg" style={{ width: "100%" }} />
+                      <Button title="Galeriden Seç" onPress={() => pickAndAnalyzePhoto(false)} variant="outline"
+                        icon={<MaterialIcons name="photo-library" size={16} color={Colors.primary} />} size="lg" style={{ width: "100%" }} />
+                    </View>
+                  </>
+                )}
+              </View>
             ) : (
               <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
 
@@ -698,6 +787,14 @@ export default function ActiveScreen() {
         onClose={() => setShowFamilyLockModal(false)}
         onUpgrade={() => { setShowFamilyLockModal(false); router.push("/membership"); }}
       />
+
+      <UpgradePromptModal
+        visible={showAiLockModal}
+        title="AI ile Fotoğrafla Ekle"
+        message="İlacı fotoğraflayıp AI'ya otomatik doldurtmak için Premium üyeliğinizin aktif olması gerekir."
+        onClose={() => setShowAiLockModal(false)}
+        onUpgrade={() => { setShowAiLockModal(false); router.push("/membership"); }}
+      />
     </SafeAreaView>
   );
 }
@@ -847,6 +944,36 @@ function calcReminderTimes(firstTime: string, frequency: string): string[] {
     const totalMin = (h ?? 8) * 60 + (m ?? 0) + i * interval * 60;
     return `${String(Math.floor(totalMin / 60) % 24).padStart(2, "0")}:${String(totalMin % 60).padStart(2, "0")}`;
   });
+}
+
+function detectMimeType(base64: string): string {
+  if (base64.startsWith("iVBORw0KGgo")) return "image/png";
+  if (base64.startsWith("/9j/")) return "image/jpeg";
+  if (base64.startsWith("R0lGOD")) return "image/gif";
+  if (base64.startsWith("UklGR")) return "image/webp";
+  return "image/jpeg";
+}
+
+async function uriToBase64(uri: string): Promise<string | null> {
+  try {
+    if (uri.startsWith("data:")) return uri.split(",")[1] ?? null;
+    const response = await fetch(uri);
+    const blob = await response.blob();
+    return await new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve((reader.result as string).split(",")[1] ?? null);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  } catch { return null; }
+}
+
+function parseMealTiming(text: string): "ac" | "tok" | "farketmez" | null {
+  const lower = text.toLowerCase();
+  if (lower.includes("aç karn") || lower.includes("ac karn") || lower.includes("yemekten önce")) return "ac";
+  if (lower.includes("tok karn") || lower.includes("yemekle") || lower.includes("yemekten sonra") || lower.includes("yemeklerle")) return "tok";
+  if (lower.includes("farketmez") || lower.includes("fark etmez")) return "farketmez";
+  return null;
 }
 
 function formatDate(date: Date): string {
@@ -1091,6 +1218,14 @@ const styles = StyleSheet.create({
   modeTabTextActive: { color: Colors.primary, fontWeight: "700" },
   modeBadge: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   modeBadgeText: { fontSize: 10, color: Colors.textInverse, fontWeight: "700" },
+
+  photoModeArea: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
+  photoModeIconCircle: {
+    width: 76, height: 76, borderRadius: 38, backgroundColor: Colors.primaryLight,
+    alignItems: "center", justifyContent: "center", marginBottom: 16,
+  },
+  photoModeTitle: { fontSize: 18, fontWeight: "700", color: Colors.text, marginBottom: 8, textAlign: "center" },
+  photoModeDesc: { fontSize: 13.5, color: Colors.textSecondary, textAlign: "center", lineHeight: 19, marginBottom: 16 },
 
   // Bento form layout
   formBento: { gap: 16 },

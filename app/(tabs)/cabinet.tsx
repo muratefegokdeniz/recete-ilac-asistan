@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect, useRef } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -25,6 +25,7 @@ import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { Medicine } from "../../types";
 import { useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTutorial } from "../../context/TutorialContext";
+import { useTutorialHighlight } from "../../hooks/useTutorialHighlight";
 import { useAuth } from "../../context/AuthContext";
 
 const SAMPLE_TUTORIAL_MEDICINE = {
@@ -106,7 +107,7 @@ export default function CabinetScreen() {
   const { openAdd } = useLocalSearchParams<{ openAdd?: string }>();
   const { profile } = useAuth();
   const tutorial = useTutorial();
-  const addBtnRef = useRef<View>(null);
+  const { ref: addBtnRef, onLayout: addBtnOnLayout } = useTutorialHighlight("cabinetAdd");
   const isTutorialAnalysisStep = tutorial.active && tutorial.currentStep?.id === "cabinet-analysis";
   const isTutorialScannerStep = tutorial.active && tutorial.currentStep?.id === "cabinet-scanner";
 
@@ -123,16 +124,6 @@ export default function CabinetScreen() {
       setShowModal(true);
     }
   }, [openAdd]);
-
-  useEffect(() => {
-    if (!(tutorial.active && tutorial.currentStep?.targetId === "cabinetAdd")) return;
-    const t = setTimeout(() => {
-      addBtnRef.current?.measureInWindow((x, y, width, height) => {
-        tutorial.reportHighlightTarget("cabinetAdd", { x, y, width, height });
-      });
-    }, 150);
-    return () => clearTimeout(t);
-  }, [tutorial.active, tutorial.stepIndex]);
 
   function openAddModal() {
     setForm({});
@@ -319,6 +310,7 @@ export default function CabinetScreen() {
           <View style={styles.headerRight}>
             <TouchableOpacity
               ref={addBtnRef}
+              onLayout={addBtnOnLayout}
               style={styles.addBtn}
               onPress={openAddModal}
               activeOpacity={0.85}

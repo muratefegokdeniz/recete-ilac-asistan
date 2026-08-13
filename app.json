@@ -70,6 +70,12 @@
         "projectId": "d25d8e60-7587-44c4-be80-547ed12e5a7f"
       }
     },
-    "owner": "muratefegokdeniz"
+    "owner": "muratefegokdeniz",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/d25d8e60-7587-44c4-be80-547ed12e5a7f"
+    }
   }
 }
