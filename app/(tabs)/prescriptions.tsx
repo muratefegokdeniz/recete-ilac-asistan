@@ -507,19 +507,20 @@ export default function PrescriptionScreen() {
                   Karşına bu ekran çıkıyor: üstte "Fotoğraf" ve "Manuel Giriş" sekmeleri var. Fotoğraf sekmesinde kamerayla anında çekebilir ya da galeriden seçebilirsin.
                 </Text>
               </View>
-              {/* Gerçek ekranın statik önizlemesi — üyelik kontrolünden bağımsız
-                  gösterilen bu turda gerçek AI çağrısı yapılmasın diye dokunulamaz. */}
-              <View pointerEvents="none">
-                <View style={styles.scannerTabBar}>
-                  <View style={[styles.scannerTab, styles.scannerTabActive]}>
-                    <Ionicons name="camera" size={16} color={Colors.primary} />
-                    <Text style={[styles.scannerTabText, styles.scannerTabTextActive]}>Fotoğraf</Text>
-                  </View>
-                  <View style={styles.scannerTab}>
-                    <Ionicons name="create" size={16} color={Colors.textMuted} />
-                    <Text style={styles.scannerTabText}>Manuel Giriş</Text>
-                  </View>
-                </View>
+              {/* Gerçek ekranın önizlemesi — sekmeler gerçekten geçiş yapıyor
+                  (bu yüzden dokunulabilir bırakıldı), ama içerideki tüm
+                  butonlar disabled: bu turda gerçek AI çağrısı yapılmıyor. */}
+              <View style={styles.scannerTabBar}>
+                <TouchableOpacity style={[styles.scannerTab, scannerTab === "photo" && styles.scannerTabActive]} onPress={() => setScannerTab("photo")}>
+                  <Ionicons name="camera" size={16} color={scannerTab === "photo" ? Colors.primary : Colors.textMuted} />
+                  <Text style={[styles.scannerTabText, scannerTab === "photo" && styles.scannerTabTextActive]}>Fotoğraf</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.scannerTab, scannerTab === "manual" && styles.scannerTabActive]} onPress={() => setScannerTab("manual")}>
+                  <Ionicons name="create" size={16} color={scannerTab === "manual" ? Colors.primary : Colors.textMuted} />
+                  <Text style={[styles.scannerTabText, scannerTab === "manual" && styles.scannerTabTextActive]}>Manuel Giriş</Text>
+                </TouchableOpacity>
+              </View>
+              {scannerTab === "photo" ? (
                 <View style={styles.uploadArea}>
                   <View style={styles.uploadIconCircle}>
                     <Ionicons name="camera" size={40} color={Colors.primary} />
@@ -535,7 +536,43 @@ export default function PrescriptionScreen() {
                       icon={<Ionicons name="images" size={16} color={Colors.primary} />} size="lg" style={{ width: "100%" }} />
                   </View>
                 </View>
-              </View>
+              ) : (
+                <View style={styles.manualForm}>
+                  <View style={styles.manualInfoBox}>
+                    <Ionicons name="information-circle" size={16} color={Colors.primary} />
+                    <Text style={styles.manualInfoText}>
+                      İlaç adlarını yazın, AI doz, kullanım ve yan etki bilgilerini otomatik tamamlayacak.
+                    </Text>
+                  </View>
+                  <View style={styles.manualRow}>
+                    <View style={styles.manualField}>
+                      <Text style={styles.manualLabel}>Doktor Adı</Text>
+                      <TextInput style={styles.manualInput} editable={false} placeholder="Dr. Ahmet Yılmaz" placeholderTextColor={Colors.textMuted} />
+                    </View>
+                    <View style={styles.manualField}>
+                      <Text style={styles.manualLabel}>Hasta Adı</Text>
+                      <TextInput style={styles.manualInput} editable={false} placeholder="Ad Soyad" placeholderTextColor={Colors.textMuted} />
+                    </View>
+                  </View>
+                  <View style={styles.manualField}>
+                    <Text style={styles.manualLabel}>İlaçlar *</Text>
+                    <Text style={styles.manualHint}>Her satıra bir ilaç yazın. Doz ve süre bilgisi ekleyebilirsiniz.</Text>
+                    <TextInput
+                      style={styles.manualMedsInput}
+                      editable={false}
+                      placeholder={"Amoksisilin 500mg, günde 3 kez, 7 gün\nParol 500mg\nVitamin D3 1000 IU"}
+                      placeholderTextColor={Colors.textMuted}
+                      multiline
+                      numberOfLines={6}
+                      textAlignVertical="top"
+                    />
+                  </View>
+                  <TouchableOpacity style={[styles.analyzeBtn, { opacity: 0.6 }]} disabled activeOpacity={1}>
+                    <Ionicons name="sparkles" size={18} color={Colors.textInverse} />
+                    <Text style={styles.analyzeBtnText}>AI ile Analiz Et</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
               <TouchableOpacity
                 style={styles.tutorialContinueBtn}
                 onPress={() => tutorial.next()}

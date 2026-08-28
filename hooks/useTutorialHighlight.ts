@@ -1,14 +1,21 @@
 import { useEffect, useRef } from "react";
-import { View } from "react-native";
+import { View, Platform, StatusBar } from "react-native";
 import { useTutorial } from "../context/TutorialContext";
 
 // Eğitici bir butonu vurgularken (highlightRing) konumunu measureInWindow ile
-// ölçüyoruz. Tek seferlik bir setTimeout'a güvenmek Android'de yanlış konum
-// verebiliyordu: SafeAreaView'ın üst inset'i ilk framede 0 gelip biraz sonra
-// gerçek değerine düzeltiliyor, buton bu düzeltmeyle aşağı kayıyor ama ölçüm
-// daha önce alındığı için oval eski (daha yukarıdaki) konumda kalıp kalıyordu.
-// Bu hook, timeout'a ek olarak ölçülen View'ın kendi onLayout'unu da dinliyor
-// — layout gerçekten değiştiği her an (inset düzeltmesi dahil) ölçüm tazeleniyor.
+// ölçüyoruz. İki ayrı sorun vardı:
+// 1. Tek seferlik bir setTimeout'a güvenmek Android'de yanlış konum
+//    verebiliyordu (SafeAreaView'ın üst inset'i geç düzeltilebiliyor) — bunu
+//    ölçülen View'ın kendi onLayout'unu da dinleyerek çözdük.
+// 2. Asıl sorun bu değildi: app.json'da edgeToEdgeEnabled açık olduğu için
+//    içerik artık status bar'ın arkasına kadar çiziliyor, ama Android'de
+//    measureInWindow status bar'ı hâlâ hesaba KATMADAN (içerik alanının
+//    başlangıcına göre) bir y döndürüyor. Overlay ise gerçek ekranın en
+//    tepesinden (status bar dahil) başlıyor — bu fark, oval'in her zaman
+//    tam status bar yüksekliği kadar yukarıda çizilmesine yol açıyordu.
+//    Android'de StatusBar.currentHeight kadar aşağı kaydırarak düzeltiyoruz.
+const ANDROID_STATUS_BAR_OFFSET = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
+
 export function useTutorialHighlight(targetId: string) {
   const ref = useRef<View>(null);
   const tutorial = useTutorial();
@@ -16,7 +23,7 @@ export function useTutorialHighlight(targetId: string) {
 
   function measure() {
     ref.current?.measureInWindow((x, y, width, height) => {
-      tutorial.reportHighlightTarget(targetId, { x, y, width, height });
+      tutorial.reportHighlightTarget(targetId, { x, y: y + ANDROID_STATUS_BAR_OFFSET, width, height });
     });
   }
 
