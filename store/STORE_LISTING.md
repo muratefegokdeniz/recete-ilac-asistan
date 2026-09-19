@@ -101,7 +101,7 @@ ilaç,reçete,hatırlatıcı,doz,eczane,aile,sağlık,ilaç takip,tedavi,alarm,i
 | Küfür | Yok |
 | Kontrollü madde referansı (uyuşturucu/alkol) | Yok — yalnızca reçeteli/OTC ilaç bilgisi, kötüye kullanım teşviki yok |
 | Kullanıcı üretimi içerik paylaşımı (herkese açık) | Yok — veriler yalnızca hesap sahibi ve eklediği aile üyeleriyle sınırlı |
-| Uygulama içi satın alma | Var (Premium / Aile üyelik kademeleri) |
+| Uygulama içi satın alma | Yok (v1'de tüm özellikler ücretsiz; üyelik/IAP altyapısı kodda hazır ama devre dışı, ilerideki bir güncellemede etkinleştirilecek) |
 | Reklam | Yok |
 | Konum paylaşımı | Yok |
 | Beklenen sonuç | Genellikle "Everyone" / 3+ (sağlık bilgisi barındırdığı için Play bazen "Herkes" içinde ek not düşebilir) |

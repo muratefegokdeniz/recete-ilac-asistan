@@ -6,7 +6,7 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, ConfirmModal, EmptyState, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
@@ -17,7 +17,7 @@ import {
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
   setVaccineCompleted, setVaccineNotificationId,
   getPendingChildLinkRequests, respondToChildLinkRequest, ChildLinkRequest,
-  hasFamilyAccess, getTierLabel,
+  hasFamilyAccess,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
@@ -28,7 +28,6 @@ const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyor
 
 export default function ProfileScreen() {
   const { user, signOut } = useAuth();
-  const router = useRouter();
   const [profile, setProfile] = useState<UserProfile>({});
   const [showEdit, setShowEdit] = useState(false);
   const [draft, setDraft] = useState<UserProfile>({});
@@ -259,25 +258,6 @@ export default function ProfileScreen() {
             ))}
           </View>
         )}
-
-        {/* Üyelik */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Üyelik</Text>
-          <View style={styles.premiumRow}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.premiumLabel}>Şu anki planınız: {getTierLabel(profile)}</Text>
-              <Text style={styles.premiumSub}>Tüm planları karşılaştırıp yükseltebilirsin.</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={styles.viewTiersBtn}
-            onPress={() => router.push("/membership")}
-            activeOpacity={0.85}
-          >
-            <Text style={styles.viewTiersBtnText}>Üyelikleri Gör</Text>
-            <MaterialIcons name="arrow-forward" size={16} color={Colors.primary} />
-          </TouchableOpacity>
-        </View>
 
         {/* Kişisel Bilgiler */}
         <View style={styles.section}>
@@ -622,15 +602,6 @@ const styles = StyleSheet.create({
     shadowColor: Colors.text, shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 },
-
-  premiumRow: { flexDirection: "row", alignItems: "center", gap: 12 },
-  premiumLabel: { fontSize: 15, fontWeight: "700", color: Colors.text },
-  premiumSub: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
-  viewTiersBtn: {
-    marginTop: 14, flexDirection: "row", gap: 6, alignItems: "center", justifyContent: "center",
-    borderRadius: Radius.full, paddingVertical: 12, borderWidth: 1.5, borderColor: Colors.primary,
-  },
-  viewTiersBtnText: { fontSize: 14, fontWeight: "700", color: Colors.primary },
 
   infoRow: { paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: Colors.border },
   infoLabelRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 3 },
