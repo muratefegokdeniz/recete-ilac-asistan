@@ -19,7 +19,8 @@
       "infoPlist": {
         "NSCameraUsageDescription": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor.",
         "NSPhotoLibraryUsageDescription": "Galerinizden reçete veya ilaç fotoğrafı seçmek için erişim gerekiyor.",
-        "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor."
+        "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor.",
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
