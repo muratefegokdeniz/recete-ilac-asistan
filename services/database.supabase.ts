@@ -548,8 +548,29 @@ export async function updateFamilyMember(id: string, member: Omit<FamilyMember, 
 }
 
 export async function deleteFamilyMember(id: string): Promise<void> {
+  const { data: member, error: fetchError } = await supabase
+    .from("family_members")
+    .select("user_id, name")
+    .eq("id", id)
+    .single();
+  if (fetchError) throw fetchError;
+
   const { error } = await supabase.from("family_members").delete().eq("id", id);
   if (error) throw error;
+
+  // Çocuğun onaylı bağlantısını da iptal et — yoksa silinen çocuğun cihazı
+  // approved status'u hâlâ geçerli olduğu için child-data fonksiyonu
+  // üzerinden veri okumaya/doz işaretlemeye devam edebilir (bkz. güvenlik
+  // denetimi bulgusu #3).
+  if (member) {
+    const { error: revokeError } = await supabase
+      .from("child_link_requests")
+      .update({ status: "revoked" })
+      .eq("parent_user_id", member.user_id)
+      .eq("child_display_name", member.name)
+      .eq("status", "approved");
+    if (revokeError) throw revokeError;
+  }
 }
 
 // ─── Child Vaccines (Aşı Kartı) ─────────────────────────────────────────────
