@@ -420,6 +420,15 @@ export async function saveProfile(profile: UserProfile): Promise<void> {
   if (error) throw error;
 }
 
+// Hesabı ve tüm ilişkili veriyi (fotoğraflar dahil) kalıcı olarak siler.
+// Gerçek silme işi service_role ile delete-account Edge Function'ında olur;
+// bu, sadece onu çağırıp sonucu döner. Geri dönüşü yoktur.
+export async function deleteAccount(): Promise<void> {
+  const { data, error } = await supabase.functions.invoke("delete-account", { body: {} });
+  if (error) throw error;
+  if (data?.error) throw new Error(data.error);
+}
+
 // ─── Child Link Requests (Aile Bağlantılı Çocuk Girişi) ─────────────────────
 
 export interface ChildLinkRequest {

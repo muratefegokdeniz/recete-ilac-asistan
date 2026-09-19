@@ -17,7 +17,7 @@ import {
   getAllActiveMedicines, getChildVaccines, createVaccineCardForChild,
   setVaccineCompleted, setVaccineNotificationId,
   getPendingChildLinkRequests, respondToChildLinkRequest, ChildLinkRequest,
-  hasFamilyAccess,
+  hasFamilyAccess, deleteAccount,
 } from "../../services/database";
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
@@ -34,6 +34,9 @@ export default function ProfileScreen() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSignOutConfirm, setShowSignOutConfirm] = useState(false);
+  const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
   const [newlyApprovedChild, setNewlyApprovedChild] = useState(false);
@@ -193,6 +196,21 @@ export default function ProfileScreen() {
 
   function handleSignOut() {
     setShowSignOutConfirm(true);
+  }
+
+  async function handleDeleteAccount() {
+    setDeletingAccount(true);
+    setDeleteAccountError(null);
+    try {
+      await deleteAccount();
+      setShowDeleteAccountConfirm(false);
+      await signOut();
+    } catch (e: any) {
+      console.error("deleteAccount hatası:", e);
+      setDeleteAccountError(e?.message ?? "Hesap silinemedi. Lütfen tekrar deneyin.");
+    } finally {
+      setDeletingAccount(false);
+    }
   }
 
   return (
@@ -389,6 +407,21 @@ export default function ProfileScreen() {
           <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
           <Text style={styles.signOutText}>Çıkış Yap</Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.deleteAccountBtn}
+          onPress={() => { setDeleteAccountError(null); setShowDeleteAccountConfirm(true); }}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="trash-outline" size={16} color={Colors.textMuted} />
+          <Text style={styles.deleteAccountText}>Hesabımı Sil</Text>
+        </TouchableOpacity>
+        {deleteAccountError && (
+          <View style={styles.errorBox}>
+            <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+            <Text style={styles.errorText}>{deleteAccountError}</Text>
+          </View>
+        )}
       </ScrollView>
 
       <Modal visible={showBirthDateModal} transparent animationType="fade" onRequestClose={() => setShowBirthDateModal(false)}>
@@ -500,6 +533,15 @@ export default function ProfileScreen() {
         confirmLabel="Çıkış Yap"
         onConfirm={() => { setShowSignOutConfirm(false); signOut(); }}
         onCancel={() => setShowSignOutConfirm(false)}
+      />
+      <ConfirmModal
+        visible={showDeleteAccountConfirm}
+        title="Hesabını Kalıcı Olarak Sil"
+        message="Hesabın, tüm reçetelerin, ilaçların, aile/çocuk bağlantıların ve yüklediğin fotoğraflar kalıcı olarak silinir. Bu işlem GERİ ALINAMAZ."
+        confirmLabel="Evet, Hesabımı Sil"
+        loading={deletingAccount}
+        onConfirm={handleDeleteAccount}
+        onCancel={() => setShowDeleteAccountConfirm(false)}
       />
 
       <ChildProfileModal
@@ -619,6 +661,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.dangerLight,
   },
   signOutText: { fontSize: 15, color: Colors.danger, fontWeight: "600" },
+
+  deleteAccountBtn: {
+    flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6,
+    paddingVertical: 12, marginTop: 4,
+  },
+  deleteAccountText: { fontSize: 13, color: Colors.textMuted, fontWeight: "600" },
 
   // Modal
   modal: { flex: 1, backgroundColor: Colors.background },
