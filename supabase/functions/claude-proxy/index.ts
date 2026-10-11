@@ -71,7 +71,17 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    const response = await anthropic.messages.create({ model, max_tokens, system, messages });
+    // Sonnet 5.5'in güvenlik sınıflandırıcıları bazen zararsız istekleri de
+    // reddedebiliyor (stop_reason: "refusal"). fallbacks: "default" böyle bir
+    // reddi Anthropic'in önerdiği modelde sunucu tarafında yeniden dener.
+    const body: Record<string, unknown> = { model, max_tokens, system, messages };
+    const options: { headers?: Record<string, string> } = {};
+    if (model === "claude-sonnet-5-5") {
+      body.fallbacks = "default";
+      options.headers = { "anthropic-beta": "server-side-fallback-2026-07-01" };
+    }
+    // deno-lint-ignore no-explicit-any
+    const response = await anthropic.messages.create(body as any, options);
 
     return new Response(JSON.stringify(response), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

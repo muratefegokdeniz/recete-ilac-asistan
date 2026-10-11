@@ -4,11 +4,25 @@ import { supabase } from "./supabase";
 // Hibrit model rotası: görsel/tıbbi çıkarım gerektiren, hata payı düşük olması
 // gereken çağrılar güçlü modeli kullanır; kısa/düşük riskli metin çağrıları
 // (sohbet, tavsiye, isimle sorgu) çok daha ucuz olan modeli kullanır.
-const MODEL_ACCURACY = "claude-sonnet-5";
-const MODEL_LIGHT = "claude-haiku-4-5";
+const MODEL_ACCURACY = "claude-sonnet-5-5";
+const MODEL_LIGHT = "claude-haiku-5-5";
 
 interface ClaudeResponse {
   content: { type: string; text?: string }[];
+  stop_reason?: string;
+}
+
+// Sonnet 5.5 / Haiku 5.5'te adaptif düşünme varsayılan olarak açık: cevap
+// bir veya birkaç "thinking" bloğuyla başlayabiliyor, content[0] metin
+// olmayabilir. Bu yüzden tüm text bloklarını birleştiriyoruz.
+function extractText(response: ClaudeResponse): string {
+  if (response.stop_reason === "refusal") {
+    throw new Error("AI bu isteği yanıtlayamadı. Lütfen farklı bir şekilde tekrar deneyin.");
+  }
+  return response.content
+    .filter((b) => b.type === "text")
+    .map((b) => b.text ?? "")
+    .join("");
 }
 
 async function callClaude(params: {
@@ -37,7 +51,7 @@ export async function analyzePrescription(
 ): Promise<PrescriptionAnalysis> {
   const response = await callClaude({
     model: MODEL_ACCURACY,
-    max_tokens: 2048,
+    max_tokens: 8000,
     system: `Sen bir eczacı asistanısın. Türkçe reçeteleri analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
 Yanıtını her zaman geçerli bir JSON formatında ver.`,
     messages: [
@@ -86,8 +100,7 @@ Reçete değilse veya okunamıyorsa boş medicines dizisi ile yanıt ver.`,
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  const text = extractText(response);
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -117,7 +130,7 @@ export async function analyzePrescriptionText(
 ): Promise<PrescriptionAnalysis> {
   const response = await callClaude({
     model: MODEL_ACCURACY,
-    max_tokens: 2048,
+    max_tokens: 8000,
     system: `Sen bir eczacı asistanısın. Kullanıcının yazdığı reçete metnini analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
 Yanıtını her zaman geçerli bir JSON formatında ver.`,
     messages: [
@@ -151,8 +164,7 @@ Kullanıcının yazdığı ilaç adlarını birebir koru, sadece eksik bilgileri
     ],
   });
 
-  const text2 =
-    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  const text2 = extractText(response);
 
   try {
     const jsonMatch = text2.match(/\{[\s\S]*\}/);
@@ -173,7 +185,7 @@ export async function analyzeMedicineImage(
   console.log("[analyzeMedicineImage] base64 uzunluğu:", base64Image?.length ?? 0);
   const response = await callClaude({
     model: MODEL_ACCURACY,
-    max_tokens: 1500,
+    max_tokens: 8000,
     system: `Sen bir eczacı asistanısın. İlaç görsellerini tanıyıp Türkçe kapsamlı bilgi veriyorsun. Yanıtını JSON formatında ver.`,
     messages: [
       {
@@ -214,8 +226,7 @@ JSON formatında yanıt ver (tüm alanları Türkçe doldur):
     ],
   });
 
-  const text =
-    response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  const text = extractText(response);
 
   try {
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -235,7 +246,7 @@ export async function getSkipAdvice(
 ): Promise<string> {
   const response = await callClaude({
     model: MODEL_LIGHT,
-    max_tokens: 512,
+    max_tokens: 4000,
     system: `Sen Türkçe konuşan, empatik ve bilgili bir eczacı asistanısın.
 Kullanıcı bir ilacını atladığında, nedenine göre kısa ve pratik önerilerde bulunuyorsun.
 Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
@@ -244,13 +255,13 @@ Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
       content: `İlaç adı: ${medicineName}\nAtlama nedeni: ${reason}\n\nBu durumda ne yapmalıyım?`,
     }],
   });
-  return response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  return extractText(response);
 }
 
 export async function getMedicineInfoByName(name: string): Promise<PrescriptionMedicine> {
   const response = await callClaude({
     model: MODEL_LIGHT,
-    max_tokens: 1024,
+    max_tokens: 4000,
     system: `Sen bir eczacı asistanısın. Türkçe ilaç bilgisi veriyorsun. Yanıtını JSON formatında ver.`,
     messages: [{
       role: "user",
@@ -266,7 +277,7 @@ export async function getMedicineInfoByName(name: string): Promise<PrescriptionM
 }`,
     }],
   });
-  const text = response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  const text = extractText(response);
   try {
     const match = text.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]) as PrescriptionMedicine;
@@ -280,7 +291,7 @@ export async function chatWithAssistant(
 ): Promise<string> {
   const response = await callClaude({
     model: MODEL_LIGHT,
-    max_tokens: 1024,
+    max_tokens: 4000,
     system: `Sen Türkçe konuşan, yardımcı ve bilgili bir eczacı asistanısın.
 İlaçlar, ilaç kullanımı, yan etkiler, ilaç etkileşimleri ve sağlık konularında bilgi veriyorsun.
 Her zaman samimi, anlaşılır ve güvenilir bilgi veriyorsun.
@@ -292,5 +303,5 @@ Yanıtların kısa, net ve Türkçe olsun.`,
     ],
   });
 
-  return response.content[0].type === "text" ? (response.content[0].text ?? "") : "";
+  return extractText(response);
 }
