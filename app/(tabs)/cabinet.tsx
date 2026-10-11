@@ -85,7 +85,7 @@ function getCardWidth(screenWidth: number): number {
 }
 
 export default function CabinetScreen() {
-  const { width: screenWidth } = useWindowDimensions();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const cardWidth = getCardWidth(screenWidth);
 
   const [medicines, setMedicines] = useState<Medicine[]>([]);
@@ -99,6 +99,7 @@ export default function CabinetScreen() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  const [showImageViewer, setShowImageViewer] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -629,13 +630,20 @@ export default function CabinetScreen() {
           <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle} numberOfLines={1}>{selectedMedicine.name}</Text>
-              <TouchableOpacity onPress={() => setSelectedMedicine(null)}>
+              <TouchableOpacity onPress={() => { setShowImageViewer(false); setSelectedMedicine(null); }}>
                 <MaterialIcons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
               {medImageUrls[selectedMedicine.id] ? (
-                <Image source={{ uri: medImageUrls[selectedMedicine.id]! }} style={styles.detailImage} resizeMode="cover" />
+                <TouchableOpacity activeOpacity={0.85} onPress={() => setShowImageViewer(true)}>
+                  {/* contain: kutu fotoğrafı kırpılmasın/ezilmesin, ilaç adı okunabilsin */}
+                  <Image source={{ uri: medImageUrls[selectedMedicine.id]! }} style={styles.detailImage} resizeMode="contain" />
+                  <View style={styles.detailImageHint}>
+                    <MaterialIcons name="zoom-out-map" size={14} color={Colors.textInverse} />
+                    <Text style={styles.detailImageHintText}>Büyütmek için dokun</Text>
+                  </View>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.detailImagePlaceholder}>
                   <View style={styles.detailPlaceholderIconCircle}>
@@ -667,6 +675,43 @@ export default function CabinetScreen() {
               onCancel={() => { setDeleteConfirmId(null); setDeleteError(null); }}
               loading={deleting}
             />
+
+            {/* Tam ekran fotoğraf — detay modalının İÇİNDE olmalı (iOS kardeş
+                Modal sunmuyor). iOS'ta ScrollView zoom ile iki parmakla büyütülür. */}
+            <Modal
+              visible={showImageViewer}
+              animationType="fade"
+              presentationStyle="fullScreen"
+              onRequestClose={() => setShowImageViewer(false)}
+            >
+              <View style={styles.viewerBackdrop}>
+                <ScrollView
+                  maximumZoomScale={4}
+                  minimumZoomScale={1}
+                  centerContent
+                  showsHorizontalScrollIndicator={false}
+                  showsVerticalScrollIndicator={false}
+                  contentContainerStyle={styles.viewerContent}
+                >
+                  {medImageUrls[selectedMedicine.id] && (
+                    <Image
+                      source={{ uri: medImageUrls[selectedMedicine.id]! }}
+                      style={{ width: screenWidth, height: screenHeight * 0.8 }}
+                      resizeMode="contain"
+                    />
+                  )}
+                </ScrollView>
+                <SafeAreaView style={styles.viewerCloseWrap} edges={["top"]} pointerEvents="box-none">
+                  <TouchableOpacity
+                    onPress={() => setShowImageViewer(false)}
+                    style={styles.viewerCloseBtn}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <MaterialIcons name="close" size={26} color="white" />
+                  </TouchableOpacity>
+                </SafeAreaView>
+              </View>
+            </Modal>
           </SafeAreaView>
         )}
       </Modal>
@@ -1066,7 +1111,20 @@ const styles = StyleSheet.create({
   formInputAiFilled: { borderColor: Colors.primary + "60", backgroundColor: Colors.primaryLight + "80" },
   formInputDisabled: { opacity: 0.6 },
 
-  detailImage: { width: "100%", height: 180, borderRadius: Radius.lg, marginBottom: 8 },
+  detailImage: { width: "100%", height: 260, borderRadius: Radius.lg, marginBottom: 8, backgroundColor: Colors.surfaceAlt },
+  detailImageHint: {
+    position: "absolute", right: 10, bottom: 18,
+    flexDirection: "row", alignItems: "center", gap: 4,
+    backgroundColor: "rgba(0,0,0,0.55)", paddingHorizontal: 8, paddingVertical: 4, borderRadius: 999,
+  },
+  detailImageHintText: { fontSize: 11, color: Colors.textInverse, fontWeight: "600" },
+  viewerBackdrop: { flex: 1, backgroundColor: "black" },
+  viewerContent: { flexGrow: 1, alignItems: "center", justifyContent: "center" },
+  viewerCloseWrap: { position: "absolute", top: 0, right: 0 },
+  viewerCloseBtn: {
+    margin: 12, width: 40, height: 40, borderRadius: 20,
+    backgroundColor: "rgba(255,255,255,0.15)", alignItems: "center", justifyContent: "center",
+  },
   detailImagePlaceholder: {
     width: "100%",
     height: 180,
