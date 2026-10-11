@@ -21,7 +21,8 @@
         "NSPhotoLibraryUsageDescription": "Galerinizden reçete veya ilaç fotoğrafı seçmek için erişim gerekiyor.",
         "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.muratefegokdeniz.receteilacasistan",
