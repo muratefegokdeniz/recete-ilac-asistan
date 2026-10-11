@@ -14,7 +14,7 @@
       "backgroundColor": "#f5faf8"
     },
     "ios": {
-      "supportsTablet": true,
+      "supportsTablet": false,
       "bundleIdentifier": "com.muratefegokdeniz.receteilacasistan",
       "infoPlist": {
         "NSCameraUsageDescription": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor.",
@@ -47,7 +47,6 @@
     },
     "plugins": [
       "expo-router",
-      "expo-sqlite",
       [
         "expo-notifications",
         {
