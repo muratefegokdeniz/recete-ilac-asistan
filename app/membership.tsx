@@ -2,10 +2,11 @@ import React from "react";
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { Redirect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../constants/Colors";
 import { useAuth } from "../context/AuthContext";
 import { hasAiAccess, hasFamilyAccess } from "../services/database";
+import { MEMBERSHIP_ENABLED } from "../constants/Features";
 
 interface TierDef {
   key: string;
@@ -76,7 +77,13 @@ const TIERS: TierDef[] = [
   },
 ];
 
-export default function MembershipScreen() {
+export default function MembershipRoute() {
+  // Üyelik bu sürümde kapalı — derin linkle gelinirse ana sayfaya dön.
+  if (!MEMBERSHIP_ENABLED) return <Redirect href="/(tabs)/home" />;
+  return <MembershipScreen />;
+}
+
+function MembershipScreen() {
   const router = useRouter();
   const { profile } = useAuth();
   const currentAi = hasAiAccess(profile);

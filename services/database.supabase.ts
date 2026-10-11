@@ -2,6 +2,7 @@ import { supabase } from "./supabase";
 import { Medicine, ActiveMedicine, TakenDose, SavedPrescription, ChatMessage, ChildVaccine, FamilyMember } from "../types";
 import { VACCINE_SCHEDULE } from "../constants/VaccineSchedule";
 import { MEMBER_COLORS } from "../constants/MemberColors";
+import { MEMBERSHIP_ENABLED } from "../constants/Features";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -108,10 +109,12 @@ export interface UserProfile {
 // Bu iki alan sadece service_role tarafından yazılabiliyor (DB trigger,
 // bkz. lock_membership_tier_columns), saveProfile() bunları hiç göndermiyor.
 export function hasAiAccess(profile: UserProfile | null): boolean {
+  if (!MEMBERSHIP_ENABLED) return true;
   return !!profile?.hasAiAccess;
 }
 
 export function hasFamilyAccess(profile: UserProfile | null): boolean {
+  if (!MEMBERSHIP_ENABLED) return true;
   return !!profile?.hasFamilyAccess;
 }
 
