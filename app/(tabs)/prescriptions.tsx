@@ -356,37 +356,45 @@ export default function PrescriptionScreen() {
           prescriptions.map((p) => {
             const isExpanded = expandedId === p.id;
             return (
-              <Card key={p.id} style={styles.prescCard} onPress={() => setSelected(p)}>
+              // Kart kendisi dokunulabilir değil: iOS'ta iç içe Touchable'da
+              // stopPropagation güvenilir çalışmıyor, ok butonu basışları
+              // kayboluyordu. Detay alanı ve ok artık kardeş butonlar.
+              <Card key={p.id} style={styles.prescCard}>
                 <View style={styles.prescRow}>
-                  {prescImageUrls[p.id] ? (
-                    <Image source={{ uri: prescImageUrls[p.id]! }} style={styles.prescThumb} resizeMode="cover" />
-                  ) : (
-                    <View style={[styles.prescThumb, styles.prescThumbPlaceholder]}>
-                      <Ionicons name="document-text" size={24} color={Colors.primary} />
-                    </View>
-                  )}
-                  <View style={styles.prescInfo}>
-                    <Text style={styles.prescDate}>{formatDate(p.savedAt)}</Text>
-                    {p.analysis.doctorName && (
-                      <Text style={styles.prescDoctor}>Dr. {p.analysis.doctorName}</Text>
-                    )}
-                    <Text style={styles.prescMedCount}>
-                      {p.analysis.medicines.length} ilaç
-                    </Text>
-                    <View style={styles.prescMedNames}>
-                      {p.analysis.medicines.slice(0, 3).map((m, i) => (
-                        <View key={i} style={styles.medNameChip}>
-                          <Text style={styles.medNameChipText}>{m.name}</Text>
-                        </View>
-                      ))}
-                      {p.analysis.medicines.length > 3 && (
-                        <Text style={styles.moreText}>+{p.analysis.medicines.length - 3} daha</Text>
-                      )}
-                    </View>
-                  </View>
                   <TouchableOpacity
-                    onPress={(e) => {
-                      e.stopPropagation();
+                    style={styles.prescMain}
+                    activeOpacity={0.7}
+                    onPress={() => setSelected(p)}
+                  >
+                    {prescImageUrls[p.id] ? (
+                      <Image source={{ uri: prescImageUrls[p.id]! }} style={styles.prescThumb} resizeMode="cover" />
+                    ) : (
+                      <View style={[styles.prescThumb, styles.prescThumbPlaceholder]}>
+                        <Ionicons name="document-text" size={24} color={Colors.primary} />
+                      </View>
+                    )}
+                    <View style={styles.prescInfo}>
+                      <Text style={styles.prescDate}>{formatDate(p.savedAt)}</Text>
+                      {!!p.analysis.doctorName && (
+                        <Text style={styles.prescDoctor}>Dr. {p.analysis.doctorName}</Text>
+                      )}
+                      <Text style={styles.prescMedCount}>
+                        {p.analysis.medicines.length} ilaç
+                      </Text>
+                      <View style={styles.prescMedNames}>
+                        {p.analysis.medicines.slice(0, 3).map((m, i) => (
+                          <View key={i} style={styles.medNameChip}>
+                            <Text style={styles.medNameChipText}>{m.name}</Text>
+                          </View>
+                        ))}
+                        {p.analysis.medicines.length > 3 && (
+                          <Text style={styles.moreText}>+{p.analysis.medicines.length - 3} daha</Text>
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={() => {
                       if (!isExpanded) {
                         p.analysis.medicines.forEach((m) => {
                           if (!(m.name in medImages)) {
@@ -461,17 +469,17 @@ export default function PrescriptionScreen() {
                             </View>
                           )}
                           <View style={styles.expandedMedMeta}>
-                            {m.dosage && <Text style={styles.expandedMedDetail}>{m.dosage}</Text>}
-                            {m.frequency && <Text style={styles.expandedMedDetail}>{m.frequency}</Text>}
-                            {m.duration && <Text style={styles.expandedMedDetail}>{m.duration}</Text>}
+                            {m.dosage ? <Text style={styles.expandedMedDetail}>{m.dosage}</Text> : null}
+                            {m.frequency ? <Text style={styles.expandedMedDetail}>{m.frequency}</Text> : null}
+                            {m.duration ? <Text style={styles.expandedMedDetail}>{m.duration}</Text> : null}
                           </View>
-                          {m.instructions && (
+                          {!!m.instructions && (
                             <View style={styles.expandedInstructionRow}>
                               <Ionicons name="restaurant-outline" size={13} color={Colors.secondary} />
                               <Text style={styles.expandedMedInstruction}>{m.instructions}</Text>
                             </View>
                           )}
-                          {m.sideEffects && (
+                          {!!m.sideEffects && (
                             <View style={styles.expandedSideEffect}>
                               <Ionicons name="warning-outline" size={13} color={Colors.warning} />
                               <Text style={styles.expandedSideEffectText}>{m.sideEffects}</Text>
@@ -762,61 +770,62 @@ export default function PrescriptionScreen() {
           </ScrollView>
           )}
         </SafeAreaView>
-      </Modal>
 
-      {/* Time Picker Modal */}
-      <Modal visible={showTimeModal} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
-          <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Hatırlatma Saatlerini Gir</Text>
-            <TouchableOpacity onPress={() => setShowTimeModal(false)}>
-              <Ionicons name="close" size={24} color={Colors.text} />
-            </TouchableOpacity>
-          </View>
-          <ScrollView contentContainerStyle={styles.modalContent}>
-            <Text style={styles.timeModalDesc}>
-              Her ilaç için ilk alım saatini gir. Diğer saatler sıklığa göre otomatik hesaplanacak.
-            </Text>
-            {medicineTimings.map((mt, i) => {
-              const times = calcReminderTimes(mt.firstTime, mt.frequency);
-              return (
-                <View key={i} style={styles.timingRow}>
-                  <View style={styles.timingMedInfo}>
-                    <Text style={styles.timingMedName} numberOfLines={1}>{mt.name}</Text>
-                    <Text style={styles.timingFreq}>{mt.frequency}</Text>
-                  </View>
-                  <View style={styles.timingInputWrap}>
-                    <TimePickerField
-                      value={mt.firstTime}
-                      onChange={(v) => setMedicineTimings((prev) =>
-                        prev.map((x, j) => j === i ? { ...x, firstTime: v } : x)
-                      )}
-                    />
-                  </View>
-                  {times.length > 1 && (
-                    <View style={styles.timingPreview}>
-                      <Ionicons name="alarm-outline" size={12} color={Colors.primary} />
-                      <Text style={styles.timingPreviewText}>{times.join(" · ")}</Text>
-                    </View>
-                  )}
-                </View>
-              );
-            })}
-            <TouchableOpacity
-              style={[styles.addToActiveBtn, addingToActive && { opacity: 0.6 }]}
-              onPress={confirmAddToActive}
-              disabled={addingToActive}
-              activeOpacity={0.8}
-            >
-              {addingToActive
-                ? <ActivityIndicator size="small" color={Colors.textInverse} />
-                : <Ionicons name="checkmark-circle" size={18} color={Colors.textInverse} />}
-              <Text style={styles.addToActiveBtnText}>
-                {addingToActive ? "Ekleniyor..." : "Aktif İlaçlara Ekle"}
+        {/* Time Picker Modal — tarama modalının İÇİNDE olmalı: iOS açık bir
+            Modal varken yanına kardeş bir Modal sunmuyor, buton sessizce çalışmıyordu. */}
+        <Modal visible={showTimeModal} animationType="slide" presentationStyle="pageSheet">
+          <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Hatırlatma Saatlerini Gir</Text>
+              <TouchableOpacity onPress={() => setShowTimeModal(false)}>
+                <Ionicons name="close" size={24} color={Colors.text} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalContent}>
+              <Text style={styles.timeModalDesc}>
+                Her ilaç için ilk alım saatini gir. Diğer saatler sıklığa göre otomatik hesaplanacak.
               </Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </SafeAreaView>
+              {medicineTimings.map((mt, i) => {
+                const times = calcReminderTimes(mt.firstTime, mt.frequency);
+                return (
+                  <View key={i} style={styles.timingRow}>
+                    <View style={styles.timingMedInfo}>
+                      <Text style={styles.timingMedName} numberOfLines={1}>{mt.name}</Text>
+                      <Text style={styles.timingFreq}>{mt.frequency}</Text>
+                    </View>
+                    <View style={styles.timingInputWrap}>
+                      <TimePickerField
+                        value={mt.firstTime}
+                        onChange={(v) => setMedicineTimings((prev) =>
+                          prev.map((x, j) => j === i ? { ...x, firstTime: v } : x)
+                        )}
+                      />
+                    </View>
+                    {times.length > 1 && (
+                      <View style={styles.timingPreview}>
+                        <Ionicons name="alarm-outline" size={12} color={Colors.primary} />
+                        <Text style={styles.timingPreviewText}>{times.join(" · ")}</Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+              <TouchableOpacity
+                style={[styles.addToActiveBtn, addingToActive && { opacity: 0.6 }]}
+                onPress={confirmAddToActive}
+                disabled={addingToActive}
+                activeOpacity={0.8}
+              >
+                {addingToActive
+                  ? <ActivityIndicator size="small" color={Colors.textInverse} />
+                  : <Ionicons name="checkmark-circle" size={18} color={Colors.textInverse} />}
+                <Text style={styles.addToActiveBtnText}>
+                  {addingToActive ? "Ekleniyor..." : "Aktif İlaçlara Ekle"}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </SafeAreaView>
+        </Modal>
       </Modal>
 
       {/* Detail Modal */}
@@ -1070,6 +1079,7 @@ const styles = StyleSheet.create({
   prescRow: { flexDirection: "row", alignItems: "center", gap: 12 },
   prescThumb: { width: 64, height: 64, borderRadius: 10 },
   prescThumbPlaceholder: { backgroundColor: Colors.primaryLight, alignItems: "center", justifyContent: "center" },
+  prescMain: { flex: 1, flexDirection: "row", alignItems: "center", gap: 12 },
   prescInfo: { flex: 1 },
   prescDate: { fontSize: 13, fontWeight: "700", color: Colors.text },
   prescDoctor: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
