@@ -56,12 +56,44 @@ BEGIN
 END $$;
 
 
+-- 5) lock_membership_tier_columns INSERT dalı (2026-10-11'de eklendi)
+--    Trigger yeni satırlarda bu alanları DEFAULT'tan bağımsız olarak zorla
+--    false yapıyordu — yani 3. adımdaki DEFAULT true yeni kullanıcılara hiç
+--    ulaşmıyordu. v1 süresince INSERT'te true veriyoruz. Güvenlik aynı: client
+--    değeri yine seçemiyor (ne gönderirse göndersin üzerine yazılıyor), UPDATE
+--    dalı da OLD değeri koruyor.
+CREATE OR REPLACE FUNCTION public.lock_membership_tier_columns()
+RETURNS trigger
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public'
+AS $function$
+BEGIN
+  IF auth.role() IS DISTINCT FROM 'service_role' THEN
+    IF TG_OP = 'UPDATE' THEN
+      NEW.has_ai_access := OLD.has_ai_access;
+      NEW.has_family_access := OLD.has_family_access;
+    ELSIF TG_OP = 'INSERT' THEN
+      -- v1: herkes ücretsiz. Ödeme sistemi gelince false'a geri çevir.
+      NEW.has_ai_access := true;
+      NEW.has_family_access := true;
+    END IF;
+  END IF;
+  RETURN NEW;
+END;
+$function$;
+
 -- ─── GERİ ALMAK İSTERSEN (ödeme sistemi hazır olduğunda) ───────────────────
 -- Sadece varsayılanı kapat, mevcut kullanıcıları DOKUNMA (aksi halde test
 -- ettiğin gerçek premium kullanıcıları da sıfırlarsın):
 --
 -- ALTER TABLE public.profiles ALTER COLUMN has_ai_access SET DEFAULT false;
 -- ALTER TABLE public.profiles ALTER COLUMN has_family_access SET DEFAULT false;
+--
+-- VE 5. adımdaki fonksiyonun INSERT dalını tekrar false'a çevir (yoksa
+-- DEFAULT false olsa bile yeni kullanıcılar true gelir):
+--   NEW.has_ai_access := false;
+--   NEW.has_family_access := false;
 --
 -- Var olan hesapları da false'a çekmek istersen önce gerçekten ödeme yapan
 -- kullanıcıların id listesini çıkar, onları hariç tutarak UPDATE at.
