@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#f5faf8"
+      "backgroundColor": "#0b6d6e"
     },
     "ios": {
       "supportsTablet": false,
@@ -28,7 +28,7 @@
       "package": "com.muratefegokdeniz.receteilacasistan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#f5faf8"
+        "backgroundColor": "#0b6d6e"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
