@@ -10,6 +10,7 @@ import { TutorialOverlay } from "../components/TutorialOverlay";
 import { Colors } from "../constants/Colors";
 import { getProfile } from "../services/database";
 import { getChildSession } from "../services/childAuth";
+import { AiConsentGate } from "../components/AiConsentGate";
 
 // expo-notifications, Expo Go'da (SDK 53+) push token dinleyicisi kurarken
 // bilinçli olarak console.error ile uyarıyor — bu bir throw değil, try/catch
@@ -54,6 +55,9 @@ function RootNavigator() {
     (async () => {
       const inAuthGroup = segments[0] === "login";
       const inChildHome = segments[0] === "child-home";
+      // Yasal sayfalar herkese açık: mağazadaki gizlilik URL'i giriş yapmamış
+      // birinin tarayıcısında da açılmalı, giriş ekranından da link veriliyor.
+      if (segments[0] === "privacy-policy" || segments[0] === "terms") return;
 
       if (!session) {
         // Gerçek bir ebeveyn oturumu yoksa, güncel bir çocuk oturumu var mı bak
@@ -105,8 +109,11 @@ function RootNavigator() {
         <Stack.Screen name="login" />
         <Stack.Screen name="child-home" />
         <Stack.Screen name="membership" />
+        <Stack.Screen name="privacy-policy" />
+        <Stack.Screen name="terms" />
       </Stack>
       <TutorialOverlay />
+      <AiConsentGate active={!!session && hasProfile && segments[0] === "(tabs)"} />
     </>
   );
 }

@@ -536,6 +536,14 @@ export default function LoginScreen() {
               <Text style={styles.switchText}>Çocuk musun? Aileme bağlı gir</Text>
             </TouchableOpacity>
           )}
+
+          <Text style={styles.legalText}>
+            {mode === "register" ? "Kayıt olarak " : "Devam ederek "}
+            <Text style={styles.legalLink} onPress={() => router.push("/terms")}>Kullanım Şartları</Text>
+            {"'nı ve "}
+            <Text style={styles.legalLink} onPress={() => router.push("/privacy-policy")}>Gizlilik Politikası</Text>
+            {"'nı kabul etmiş olursun."}
+          </Text>
         </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -555,6 +563,8 @@ const styles = StyleSheet.create({
   inner: { flex: 1, justifyContent: "center", padding: 24 },
 
   logoArea: { alignItems: "center", marginBottom: 32 },
+  legalText: { fontSize: 12, lineHeight: 18, color: Colors.textMuted, textAlign: "center", marginTop: 20 },
+  legalLink: { color: Colors.primary, fontWeight: "600" },
   logoCircle: { width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.primaryLight, alignItems: "center", justifyContent: "center", marginBottom: 14 },
   appName: { fontSize: 26, fontWeight: "800", color: Colors.text },
   appSub: { fontSize: 14, color: Colors.textSecondary, marginTop: 4 },

@@ -2,13 +2,15 @@ import React from "react";
 import { View, Text, ScrollView, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Colors } from "../constants/Colors";
+import { LegalBackButton } from "../components/LegalBackButton";
 
-const LAST_UPDATED = "30 Ağustos 2026";
+const LAST_UPDATED = "12 Ekim 2026";
 
 export default function PrivacyPolicyScreen() {
   return (
     <SafeAreaView style={styles.container} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
+        <LegalBackButton />
         <Text style={styles.title}>Gizlilik Politikası</Text>
         <Text style={styles.updated}>Son güncelleme: {LAST_UPDATED}</Text>
 
@@ -42,9 +44,12 @@ export default function PrivacyPolicyScreen() {
         <Text style={styles.paragraph}>
           • Supabase: hesap verileriniz, ilaç kayıtlarınız ve yüklediğiniz fotoğraflar
           güvenli şekilde bu altyapıda saklanır.{"\n"}
-          • Anthropic (Claude): reçete/ilaç fotoğraflarınız, yalnızca ilaç bilgisini
-          okuyup size sunmak amacıyla analiz için bu servise iletilir; bu veriler
-          Anthropic tarafından model eğitimi için kullanılmaz.{"\n"}
+          • Anthropic (Claude): yapay zeka özelliklerini kullandığınızda reçete/ilaç
+          fotoğraflarınız, ilaç adları ve reçete bilgileri ile Asistan'a yazdığınız
+          mesajlar, yalnızca isteğinizi yanıtlamak amacıyla bu servise iletilir; bu
+          veriler Anthropic tarafından model eğitimi için kullanılmaz. Bu paylaşım
+          yalnızca uygulama içinde açıkça izin vermenizden sonra yapılır; izninizi
+          Profil &gt; Yapay Zeka İzni bölümünden istediğiniz zaman geri alabilirsiniz.{"\n"}
           Bu sağlayıcılarla veri paylaşımı yalnızca uygulamanın çalışması için gerekli
           ölçüde yapılır.
         </Text>

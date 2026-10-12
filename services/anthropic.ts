@@ -1,5 +1,6 @@
 import { PrescriptionAnalysis, PrescriptionMedicine } from "../types";
 import { supabase } from "./supabase";
+import { getAiConsent, AI_CONSENT_REQUIRED_MESSAGE } from "./aiConsent";
 
 // Hibrit model rotası: görsel/tıbbi çıkarım gerektiren, hata payı düşük olması
 // gereken çağrılar güçlü modeli kullanır; kısa/düşük riskli metin çağrıları
@@ -31,6 +32,9 @@ async function callClaude(params: {
   system?: string;
   messages: unknown[];
 }): Promise<ClaudeResponse> {
+  if ((await getAiConsent()) !== "granted") {
+    throw new Error(AI_CONSENT_REQUIRED_MESSAGE);
+  }
   const { data, error } = await supabase.functions.invoke("claude-proxy", {
     body: params,
   });

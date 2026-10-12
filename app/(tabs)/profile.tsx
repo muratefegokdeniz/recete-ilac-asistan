@@ -1,12 +1,12 @@
 import React, { useState, useCallback } from "react";
 import {
   View, Text, StyleSheet, TouchableOpacity,
-  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator,
+  ScrollView, TextInput, KeyboardAvoidingView, Platform, Modal, ActivityIndicator, Switch,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { Button, ConfirmModal, EmptyState, DatePickerField } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
@@ -22,6 +22,7 @@ import {
 import { scheduleVaccineReminder } from "../../services/notifications";
 import { FamilyMember, ChildVaccine } from "../../types";
 import { fallbackMemberColor } from "../../constants/MemberColors";
+import { getAiConsent, setAiConsent } from "../../services/aiConsent";
 
 const GENDER_OPTIONS = ["Erkek", "Kadın", "Belirtmek istemiyorum"];
 const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyorum"];
@@ -37,6 +38,17 @@ export default function ProfileScreen() {
   const [showDeleteAccountConfirm, setShowDeleteAccountConfirm] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
+  const router = useRouter();
+  const [aiConsentGranted, setAiConsentGranted] = useState(false);
+
+  useFocusEffect(useCallback(() => {
+    getAiConsent().then((c) => setAiConsentGranted(c === "granted"));
+  }, []));
+
+  async function toggleAiConsent(value: boolean) {
+    setAiConsentGranted(value);
+    await setAiConsent(value ? "granted" : "denied");
+  }
   const [familyMembers, setFamilyMembers] = useState<FamilyMember[]>([]);
   const [editingChild, setEditingChild] = useState<FamilyMember | null>(null);
   const [newlyApprovedChild, setNewlyApprovedChild] = useState(false);
@@ -403,6 +415,36 @@ export default function ProfileScreen() {
           </View>
         )}
 
+        {/* Yapay Zeka İzni — App Store 5.1.2(i): üçüncü taraf AI ile veri paylaşımı */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Yapay Zeka İzni</Text>
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingLabel}>Anthropic (Claude) ile veri paylaşımı</Text>
+              <Text style={styles.settingHint}>
+                Reçete/ilaç fotoğrafları, ilaç bilgileri ve Asistan mesajları yalnızca AI özelliklerini kullandığında gönderilir. Kapalıyken AI özellikleri çalışmaz.
+              </Text>
+            </View>
+            <Switch
+              value={aiConsentGranted}
+              onValueChange={toggleAiConsent}
+              trackColor={{ true: Colors.primary, false: Colors.border }}
+            />
+          </View>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Yasal</Text>
+          <TouchableOpacity style={styles.linkRow} onPress={() => router.push("/privacy-policy")}>
+            <Text style={styles.settingLabel}>Gizlilik Politikası</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.linkRow, { borderBottomWidth: 0 }]} onPress={() => router.push("/terms")}>
+            <Text style={styles.settingLabel}>Kullanım Şartları</Text>
+            <Ionicons name="chevron-forward" size={18} color={Colors.textMuted} />
+          </TouchableOpacity>
+        </View>
+
         <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut} activeOpacity={0.8}>
           <Ionicons name="log-out-outline" size={18} color={Colors.danger} />
           <Text style={styles.signOutText}>Çıkış Yap</Text>
@@ -642,6 +684,13 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surface, borderRadius: Radius.xl,
     padding: 16, gap: 0,
     shadowColor: Colors.text, shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
+  },
+  settingRow: { flexDirection: "row", alignItems: "center", gap: 12 },
+  settingLabel: { fontSize: 14, fontWeight: "600", color: Colors.text },
+  settingHint: { fontSize: 12, lineHeight: 17, color: Colors.textMuted, marginTop: 4 },
+  linkRow: {
+    flexDirection: "row", alignItems: "center", justifyContent: "space-between",
+    paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
   sectionTitle: { fontSize: 11, fontWeight: "700", color: Colors.textMuted, textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 },
 

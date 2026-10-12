@@ -15,6 +15,30 @@ import {
 import { Colors, Shadows, Radius } from "../constants/Colors";
 import { FREQUENCY_OPTIONS, MEAL_TIMING_OPTIONS } from "../constants/MedicineOptions";
 import DateTimePicker from "@react-native-community/datetimepicker";
+import { Ionicons } from "@expo/vector-icons";
+
+// AI çıktısının yanında gösterilen doğruluk uyarısı (App Store 1.4.1 — tıbbi
+// uygulamalar): AI ilaç adını/dozu yanlış okuyabilir, kullanıcı teyit etmeli.
+export function AiAccuracyNote({ style }: { style?: ViewStyle }) {
+  return (
+    <View style={[aiNoteStyles.box, style]}>
+      <Ionicons name="warning-outline" size={16} color={Colors.warning} />
+      <Text style={aiNoteStyles.text}>
+        Bu bilgiler yapay zeka ile çıkarıldı ve hatalı olabilir. İlaç adını, dozu ve kullanım
+        sıklığını reçetenizle veya ilaç kutusuyla karşılaştırın; emin değilseniz doktorunuza
+        ya da eczacınıza danışın.
+      </Text>
+    </View>
+  );
+}
+
+const aiNoteStyles = StyleSheet.create({
+  box: {
+    flexDirection: "row", alignItems: "flex-start", gap: 8,
+    backgroundColor: Colors.warningLight, borderRadius: Radius.md, padding: 12,
+  },
+  text: { flex: 1, fontSize: 12, lineHeight: 17, color: Colors.textSecondary },
+});
 
 interface CardProps {
   children: React.ReactNode;

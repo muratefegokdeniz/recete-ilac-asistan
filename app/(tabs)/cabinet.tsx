@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Colors, Shadows, Radius } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField, AiAccuracyNote } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -592,6 +592,7 @@ export default function CabinetScreen() {
                   <Text style={styles.aiFillText}>AI {aiFilledFields.size} alan doldurdu. İstersen düzenleyebilirsin.</Text>
                 </View>
               )}
+              {!analyzing && aiFilledFields.size > 0 && <AiAccuracyNote style={{ marginBottom: 12 }} />}
 
               {/* Form */}
               <View style={styles.formSection}>

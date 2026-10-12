@@ -16,7 +16,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal, AiAccuracyNote } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -913,6 +913,7 @@ function AnalysisResult({ analysis, onClose, addedToActive, onAddToActive }: {
 function PrescriptionDetail({ analysis }: { analysis: PrescriptionAnalysis }) {
   return (
     <View style={styles.detailContainer}>
+      <AiAccuracyNote style={{ marginBottom: 12 }} />
       {(analysis.doctorName || analysis.patientName || analysis.date) && (
         <Card style={styles.infoCard}>
           <Text style={styles.cardTitle}>Reçete Bilgileri</Text>

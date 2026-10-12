@@ -27,6 +27,7 @@ import { ChatMessage } from "../../types";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { EmptyState } from "../../components/ui";
 import { useAuth } from "../../context/AuthContext";
+import { getAiConsent, setAiConsent, onAiConsentChange } from "../../services/aiConsent";
 
 const QUICK_QUESTIONS = [
   "Bu ilaç süt ile alınabilir mi?",
@@ -155,6 +156,30 @@ export default function ChatScreen() {
       if (currentConvId === id) startNewChat();
       await loadConversations();
     } catch (_) {}
+  }
+
+  // null = henüz yüklenmedi; izin yoksa sohbet yerine izin ekranı göster
+  const [aiConsentGranted, setAiConsentGranted] = useState<boolean | null>(null);
+  useFocusEffect(useCallback(() => {
+    const check = () => getAiConsent().then((c) => setAiConsentGranted(c === "granted"));
+    check();
+    return onAiConsentChange(check);
+  }, []));
+
+  if (aiConsentGranted === false) {
+    return (
+      <SafeAreaView style={styles.container} edges={["top"]}>
+        <View style={[styles.header, { justifyContent: "flex-end" }]}>
+          <HeaderProfileButton />
+        </View>
+        <EmptyState
+          icon={<MaterialIcons name="auto-awesome" size={32} color={Colors.textMuted} />}
+          title="Yapay Zeka İzni Gerekli"
+          description="Asistan, Anthropic (Claude) yapay zeka hizmetiyle çalışır; yazdığın mesajlar yanıt üretmek için Anthropic'e gönderilir. Kullanmak için izin vermelisin."
+          action={{ label: "İzin Ver", onPress: () => setAiConsent("granted") }}
+        />
+      </SafeAreaView>
+    );
   }
 
   if (!hasAiAccess(profile)) {

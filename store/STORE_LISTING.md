@@ -162,3 +162,65 @@ Bu yüzden ekran görüntülerini, gönderim zamanı geldiğinde güncel uygulam
 tercihen nötr/demo bir hesap adıyla yeniden almanızı öneririm. İstediğinizde
 simulator/emulator ya da web build üzerinden Playwright ile otomatik, doğru
 çözünürlükte bir set çıkarabilirim — tek yapmanız gereken haber vermek.
+
+---
+
+## 10. App Store — App Review Information → Notes
+
+> App Store Connect → uygulama sürümü → **App Review Information** bölümüne yapıştırılacak.
+> "Sign-in required" işaretlenip demo hesap bilgileri ayrıca **Sign-In Information**
+> alanlarına girilecek. Demo hesap içinde örnek reçete, ilaç ve bir çocuk profili olmalı.
+
+```
+Thank you for reviewing İlaç Asistanı (Medicine Assistant).
+
+DEMO ACCOUNT
+Email: <demo hesap e-postası>
+Password: <demo hesap şifresi>
+The account already contains sample prescriptions, medicines in the cabinet,
+active reminders and a child profile so every feature can be reviewed.
+
+WHAT THE APP DOES
+A personal medicine organizer (Turkish UI): users photograph a prescription or a
+medicine box, review the extracted medicine list, keep a home medicine cabinet with
+expiry dates, and get local reminder notifications. The app does NOT diagnose,
+prescribe or recommend treatment. All features are free; there are no in-app
+purchases or subscriptions in this version.
+
+AI / THIRD-PARTY DATA SHARING (Guideline 5.1.2(i))
+Prescription reading, medicine-photo analysis and the chat assistant use Anthropic
+Claude via our own server (the API key never ships in the app). Before any data is
+sent, the app shows a one-time consent screen ("Yapay Zeka ile Veri Paylaşımı")
+listing exactly what is shared (photos, medicine details, chat messages). If the
+user declines, AI features stay off and everything else works with manual entry.
+Consent can be changed any time in Profile > "Yapay Zeka İzni". Anthropic does not
+use this data for model training.
+
+MEDICAL SAFETY (Guideline 1.4.1)
+Every AI result shows a warning that it may be inaccurate and must be checked
+against the prescription/box or confirmed with a doctor or pharmacist. The chat
+screen states it is not medical advice. Terms of Use include a medical disclaimer.
+
+ACCOUNT DELETION (Guideline 5.1.1(v))
+Profile > "Hesabımı Sil" permanently deletes the account and all associated data
+(records and uploaded photos) on our server.
+
+FAMILY / CHILD DEVICE LINKING
+A parent can add child profiles to their own account. Optionally a child can view
+their own reminders on a separate device via "Çocuk musun? Aileme bağlı gir" on the
+login screen. For this one-time link request, the parent's email and password are
+entered on the child's device to verify the parent's identity; the password is sent
+over HTTPS to our server only to verify it, is never stored, and is never returned
+to the child's device. The link stays pending until the parent explicitly approves
+it from their own device (Profile > pending requests), and the parent can revoke it
+by deleting the child profile. The child device never receives the parent's
+session or credentials.
+
+PERMISSIONS
+Camera / Photo Library: only to capture or pick prescription and medicine photos.
+Notifications: local medicine reminders. No location, contacts, tracking or ads.
+
+Privacy Policy: https://recete-ilac-asistan.vercel.app/privacy-policy
+Terms of Use:   https://recete-ilac-asistan.vercel.app/terms
+Contact: muratefegokdeniz@gmail.com
+```

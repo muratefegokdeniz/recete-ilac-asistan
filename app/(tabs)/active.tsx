@@ -10,7 +10,7 @@ import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField, UpgradePromptModal } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField, UpgradePromptModal, AiAccuracyNote } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useTutorial } from "../../context/TutorialContext";
@@ -70,6 +70,7 @@ export default function ActiveScreen() {
   const [showFamilyLockModal, setShowFamilyLockModal] = useState(false);
   const [showAiLockModal, setShowAiLockModal] = useState(false);
   const [analyzingPhoto, setAnalyzingPhoto] = useState(false);
+  const [photoAiFilled, setPhotoAiFilled] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [deleteChildConfirm, setDeleteChildConfirm] = useState<string | null>(null);
   const tutorial = useTutorial();
@@ -153,6 +154,7 @@ export default function ActiveScreen() {
     setShowModal(true);
     setAddMode("manual");
     setPhotoError(null);
+    setPhotoAiFilled(false);
     resetForm();
   }
 
@@ -211,6 +213,7 @@ export default function ActiveScreen() {
         notes: notesParts.length > 0 ? notesParts.join(" ") : f.notes,
         fromCabinetId: "",
       }));
+      setPhotoAiFilled(true);
       setAddMode("manual");
     } catch (e: any) {
       setPhotoError(e?.message ?? "Fotoğraf analiz edilirken bir hata oluştu.");
@@ -563,6 +566,7 @@ export default function ActiveScreen() {
               </View>
             ) : (
               <ScrollView contentContainerStyle={styles.modalContent} keyboardShouldPersistTaps="handled">
+                {photoAiFilled && <AiAccuracyNote style={{ marginBottom: 12 }} />}
 
                 {/* Üye seçici */}
                 <View style={styles.memberPickerSection}>

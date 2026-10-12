@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0b6d6e"
+      "backgroundColor": "#0b6e6e"
     },
     "ios": {
       "supportsTablet": false,
@@ -28,7 +28,7 @@
       "package": "com.muratefegokdeniz.receteilacasistan",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0b6d6e"
+        "backgroundColor": "#0b6e6e"
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
@@ -59,7 +59,8 @@
         "expo-image-picker",
         {
           "photosPermission": "Galerinizden ilaç fotoğrafı seçmek için erişim gerekiyor.",
-          "cameraPermission": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor."
+          "cameraPermission": "Reçete ve ilaç fotoğrafı çekmek için kamera erişimi gerekiyor.",
+          "microphonePermission": false
         }
       ],
       "@react-native-community/datetimepicker",
