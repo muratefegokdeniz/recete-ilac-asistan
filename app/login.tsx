@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import { KeyboardDoneBar, KEYBOARD_DONE_ID } from "../components/ui";
 import { Colors, Radius } from "../constants/Colors";
 import { useAuth } from "../context/AuthContext";
 import { useTutorial } from "../context/TutorialContext";
@@ -282,9 +283,10 @@ export default function LoginScreen() {
             {step === 3 && (
               <View style={styles.obFields}>
                 <Text style={styles.obLabel}>Alerjileriniz</Text>
-                <TextInput style={[styles.obInput, styles.obInputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, allergies: v }))} placeholder="Örn: Penisilin, aspirin..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} textAlignVertical="top" />
+                <TextInput style={[styles.obInput, styles.obInputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, allergies: v }))} placeholder="Örn: Penisilin, aspirin..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} textAlignVertical="top" inputAccessoryViewID={KEYBOARD_DONE_ID} />
                 <Text style={[styles.obLabel, { marginTop: 20 }]}>Kronik Hastalıklar</Text>
-                <TextInput style={[styles.obInput, styles.obInputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, chronicConditions: v }))} placeholder="Örn: Diyabet, hipertansiyon..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} textAlignVertical="top" />
+                <KeyboardDoneBar />
+                <TextInput style={[styles.obInput, styles.obInputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, chronicConditions: v }))} placeholder="Örn: Diyabet, hipertansiyon..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} textAlignVertical="top" inputAccessoryViewID={KEYBOARD_DONE_ID} />
               </View>
             )}
 

@@ -11,11 +11,41 @@ import {
   TextStyle,
   TextInput,
   Platform,
+  Keyboard,
+  InputAccessoryView,
 } from "react-native";
 import { Colors, Shadows, Radius } from "../constants/Colors";
 import { FREQUENCY_OPTIONS, MEAL_TIMING_OPTIONS } from "../constants/MedicineOptions";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
+
+// Çok satırlı TextInput'larda Enter yeni satır açtığı için iOS'ta klavyeyi
+// kapatmanın bir yolu yok, altındaki butonlar klavyenin arkasında kalıyor.
+// Bu inputlara inputAccessoryViewID={KEYBOARD_DONE_ID} verip aynı ekran/modal
+// içinde bir kez <KeyboardDoneBar /> render edin.
+export const KEYBOARD_DONE_ID = "keyboardDone";
+
+export function KeyboardDoneBar() {
+  if (Platform.OS !== "ios") return null;
+  return (
+    <InputAccessoryView nativeID={KEYBOARD_DONE_ID}>
+      <View style={keyboardBarStyles.bar}>
+        <TouchableOpacity onPress={Keyboard.dismiss} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <Text style={keyboardBarStyles.done}>Bitti</Text>
+        </TouchableOpacity>
+      </View>
+    </InputAccessoryView>
+  );
+}
+
+const keyboardBarStyles = StyleSheet.create({
+  bar: {
+    flexDirection: "row", justifyContent: "flex-end",
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: Colors.surfaceAlt, borderTopWidth: 1, borderTopColor: Colors.border,
+  },
+  done: { fontSize: 16, fontWeight: "700", color: Colors.primary },
+});
 
 // AI çıktısının yanında gösterilen doğruluk uyarısı (App Store 1.4.1 — tıbbi
 // uygulamalar): AI ilaç adını/dozu yanlış okuyabilir, kullanıcı teyit etmeli.

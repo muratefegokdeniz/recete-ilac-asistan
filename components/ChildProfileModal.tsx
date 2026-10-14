@@ -6,7 +6,7 @@ import {
 import { Ionicons } from "@expo/vector-icons";
 import { Colors, Radius } from "../constants/Colors";
 import { MEMBER_COLORS } from "../constants/MemberColors";
-import { Button } from "./ui";
+import { Button, KeyboardDoneBar, KEYBOARD_DONE_ID } from "./ui";
 import { FamilyMember } from "../types";
 
 const GENDER_OPTIONS = ["Erkek", "Kız", "Belirtmek istemiyorum"];
@@ -227,11 +227,12 @@ export function ChildProfileModal({
             </Field>
 
             <Field label="Kronik Hastalıklar" icon="medkit-outline">
-              <TextInput style={[styles.input, styles.inputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, chronicConditions: v }))} placeholder="Varsa yaz..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} />
+              <TextInput style={[styles.input, styles.inputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, chronicConditions: v }))} placeholder="Varsa yaz..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} inputAccessoryViewID={KEYBOARD_DONE_ID} />
             </Field>
 
             <Field label="Alerjiler" icon="warning-outline">
-              <TextInput style={[styles.input, styles.inputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, allergies: v }))} placeholder="Varsa yaz..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} />
+              <KeyboardDoneBar />
+              <TextInput style={[styles.input, styles.inputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, allergies: v }))} placeholder="Varsa yaz..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} inputAccessoryViewID={KEYBOARD_DONE_ID} />
             </Field>
 
             {error && (

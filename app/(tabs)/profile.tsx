@@ -8,7 +8,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, ConfirmModal, EmptyState, DatePickerField } from "../../components/ui";
+import { Button, ConfirmModal, EmptyState, DatePickerField, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { useAuth } from "../../context/AuthContext";
 import {
@@ -549,11 +549,12 @@ export default function ProfileScreen() {
                 <Text style={styles.sectionTitle}>Sağlık Bilgileri</Text>
 
                 <Field label="Kronik Hastalıklar" icon="medkit-outline">
-                  <TextInput style={[styles.input, styles.inputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft(f => ({ ...f, chronicConditions: v }))} placeholder="Diyabet, hipertansiyon..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} />
+                  <TextInput style={[styles.input, styles.inputMulti]} value={draft.chronicConditions ?? ""} onChangeText={(v) => setDraft(f => ({ ...f, chronicConditions: v }))} placeholder="Diyabet, hipertansiyon..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} inputAccessoryViewID={KEYBOARD_DONE_ID} />
                 </Field>
 
                 <Field label="Alerjiler" icon="warning-outline">
-                  <TextInput style={[styles.input, styles.inputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft(f => ({ ...f, allergies: v }))} placeholder="Penisilin, aspirin..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} />
+                  <KeyboardDoneBar />
+                  <TextInput style={[styles.input, styles.inputMulti]} value={draft.allergies ?? ""} onChangeText={(v) => setDraft(f => ({ ...f, allergies: v }))} placeholder="Penisilin, aspirin..." placeholderTextColor={Colors.textMuted} multiline numberOfLines={3} inputAccessoryViewID={KEYBOARD_DONE_ID} />
                 </Field>
               </View>
 

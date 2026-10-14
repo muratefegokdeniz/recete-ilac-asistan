@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -10,13 +10,14 @@ import {
   Alert,
   Modal,
   TextInput,
+  Keyboard,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal, AiAccuracyNote } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal, AiAccuracyNote, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -41,6 +42,11 @@ const AVATAR_COLORS = ["#00685f", "#008378", "#0a9186", "#2eada3", "#49bcb2", "#
 export default function PrescriptionScreen() {
   const [prescriptions, setPrescriptions] = useState<SavedPrescription[]>([]);
   const [selected, setSelected] = useState<SavedPrescription | null>(null);
+  // Modal kapanma animasyonu sürerken içerik boşalıp beyaz sayfa görünmesin:
+  // kapatırken son gösterilen kaydı göstermeye devam et.
+  const lastSelectedRef = useRef<SavedPrescription | null>(null);
+  if (selected) lastSelectedRef.current = selected;
+  const detailSelected = selected ?? lastSelectedRef.current;
   const [showScanner, setShowScanner] = useState(false);
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [medImages, setMedImages] = useState<Record<string, string | null>>({});
@@ -284,7 +290,9 @@ export default function PrescriptionScreen() {
       await deletePrescription(deleteConfirmId);
       if (toDelete?.imageUri) deleteUserImage(toDelete.imageUri).catch(() => {});
       setDeleteConfirmId(null);
-      setSelected(null);
+      // iOS: iç içe onay modalı ile üst modal aynı anda kapatılırsa sayfa
+      // beyaz kalabiliyor — önce onay kapansın, detay animasyon bitince.
+      setTimeout(() => setSelected(null), 400);
       await loadPrescriptions();
     } catch (e: any) {
       setDeleteConfirmId(null);
@@ -638,7 +646,13 @@ export default function PrescriptionScreen() {
           )}
 
           {!isTutorialAnalysisStep && !isTutorialScannerStep && (
-          <ScrollView contentContainerStyle={styles.modalContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.modalContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="interactive"
+            automaticallyAdjustKeyboardInsets
+          >
 
             {/* ── PHOTO TAB ── */}
             {scannerTab === "photo" && (
@@ -726,6 +740,7 @@ export default function PrescriptionScreen() {
                     style={styles.manualMedsInput}
                     value={manualMeds}
                     onChangeText={setManualMeds}
+                    inputAccessoryViewID={KEYBOARD_DONE_ID}
                     placeholder={"Amoksisilin 500mg, günde 3 kez, 7 gün\nParol 500mg\nVitamin D3 1000 IU"}
                     placeholderTextColor={Colors.textMuted}
                     multiline
@@ -741,9 +756,11 @@ export default function PrescriptionScreen() {
                   </View>
                 )}
 
+                <KeyboardDoneBar />
+
                 <TouchableOpacity
                   style={[styles.analyzeBtn, loading && { opacity: 0.6 }]}
-                  onPress={handleManualAnalyze}
+                  onPress={() => { Keyboard.dismiss(); handleManualAnalyze(); }}
                   disabled={loading}
                   activeOpacity={0.85}
                 >
@@ -830,17 +847,17 @@ export default function PrescriptionScreen() {
 
       {/* Detail Modal */}
       <Modal visible={!!selected} animationType="slide" presentationStyle="pageSheet">
-        {selected && (
+        {detailSelected && (
           <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
               <View>
-                <Text style={styles.modalTitle}>{formatDate(selected.savedAt)}</Text>
-                {selected.analysis.doctorName && (
-                  <Text style={styles.modalSubtitle}>Dr. {selected.analysis.doctorName}</Text>
+                <Text style={styles.modalTitle}>{formatDate(detailSelected.savedAt)}</Text>
+                {!!detailSelected.analysis.doctorName && (
+                  <Text style={styles.modalSubtitle}>Dr. {detailSelected.analysis.doctorName}</Text>
                 )}
               </View>
               <View style={styles.modalActions}>
-                <TouchableOpacity onPress={() => handleDelete(selected.id)} style={styles.deleteBtn}>
+                <TouchableOpacity onPress={() => handleDelete(detailSelected.id)} style={styles.deleteBtn}>
                   <Ionicons name="trash-outline" size={20} color={Colors.danger} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setSelected(null)}>
@@ -849,10 +866,10 @@ export default function PrescriptionScreen() {
               </View>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {prescImageUrls[selected.id] && (
-                <Image source={{ uri: prescImageUrls[selected.id]! }} style={styles.detailImage} resizeMode="contain" />
+              {prescImageUrls[detailSelected.id] && (
+                <Image source={{ uri: prescImageUrls[detailSelected.id]! }} style={styles.detailImage} resizeMode="contain" />
               )}
-              <PrescriptionDetail analysis={selected.analysis} />
+              <PrescriptionDetail analysis={detailSelected.analysis} />
             </ScrollView>
 
             <ConfirmModal

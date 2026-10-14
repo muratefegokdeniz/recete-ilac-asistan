@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from "react";
+import React, { useRef, useState, useCallback, useEffect } from "react";
 import {
   View,
   Text,
@@ -17,7 +17,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
 import { Colors, Shadows, Radius } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField, AiAccuracyNote } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, DatePickerField, AiAccuracyNote, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
 import { analyzeMedicineImage } from "../../services/anthropic";
 import { getAllMedicines, addMedicine, deleteMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -99,6 +99,11 @@ export default function CabinetScreen() {
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [aiFilledFields, setAiFilledFields] = useState<Set<string>>(new Set());
   const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
+  // Modal kapanma animasyonu sürerken içerik boşalıp beyaz sayfa görünmesin:
+  // kapatırken son gösterilen kaydı göstermeye devam et.
+  const lastSelectedMedicineRef = useRef<Medicine | null>(null);
+  if (selectedMedicine) lastSelectedMedicineRef.current = selectedMedicine;
+  const detailSelectedMedicine = selectedMedicine ?? lastSelectedMedicineRef.current;
   const [showImageViewer, setShowImageViewer] = useState(false);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -268,7 +273,9 @@ export default function CabinetScreen() {
       await deleteMedicine(deleteConfirmId);
       if (toDelete?.imageUri) deleteUserImage(toDelete.imageUri).catch(() => {});
       setDeleteConfirmId(null);
-      setSelectedMedicine(null);
+      // iOS: iç içe onay modalı ile üst modal aynı anda kapatılırsa sayfa
+      // beyaz kalabiliyor — önce onay kapansın, detay animasyon bitince.
+      setTimeout(() => setSelectedMedicine(null), 400);
       await loadMedicines();
     } catch (e: any) {
       setDeleteError(e?.message ?? "İlaç silinemedi. Lütfen tekrar deneyin.");
@@ -602,6 +609,7 @@ export default function CabinetScreen() {
                 <MealTimingPicker value={form.mealTiming ?? ""} onChange={(v) => setForm((f) => ({ ...f, mealTiming: v }))} />
                 <AiFormField label="Ne İçin Kullanılır" value={form.purpose} onChange={(v) => setForm((f) => ({ ...f, purpose: v }))} placeholder="Hastalık ve belirtiler..." multiline aiFilledFields={aiFilledFields} fieldKey="purpose" disabled={analyzing} />
                 <AiFormField label="Kullanım Talimatları" value={form.description} onChange={(v) => setForm((f) => ({ ...f, description: v }))} placeholder="Tok/aç karnına, su ile vs..." multiline aiFilledFields={aiFilledFields} fieldKey="description" disabled={analyzing} />
+                <KeyboardDoneBar />
                 <AiFormField label="Yan Etkiler" value={form.sideEffects} onChange={(v) => setForm((f) => ({ ...f, sideEffects: v }))} placeholder="Olası yan etkiler..." multiline aiFilledFields={aiFilledFields} fieldKey="sideEffects" disabled={analyzing} />
                 <DatePickerField
                   label="Son Kullanma Tarihi"
@@ -627,19 +635,19 @@ export default function CabinetScreen() {
 
       {/* Detail Modal */}
       <Modal visible={!!selectedMedicine} animationType="slide" presentationStyle="pageSheet">
-        {selectedMedicine && (
+        {detailSelectedMedicine && (
           <SafeAreaView style={styles.modal} edges={["top", "bottom"]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle} numberOfLines={1}>{selectedMedicine.name}</Text>
+              <Text style={styles.modalTitle} numberOfLines={1}>{detailSelectedMedicine.name}</Text>
               <TouchableOpacity onPress={() => { setShowImageViewer(false); setSelectedMedicine(null); }}>
                 <MaterialIcons name="close" size={24} color={Colors.text} />
               </TouchableOpacity>
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
-              {medImageUrls[selectedMedicine.id] ? (
+              {medImageUrls[detailSelectedMedicine.id] ? (
                 <TouchableOpacity activeOpacity={0.85} onPress={() => setShowImageViewer(true)}>
                   {/* contain: kutu fotoğrafı kırpılmasın/ezilmesin, ilaç adı okunabilsin */}
-                  <Image source={{ uri: medImageUrls[selectedMedicine.id]! }} style={styles.detailImage} resizeMode="contain" />
+                  <Image source={{ uri: medImageUrls[detailSelectedMedicine.id]! }} style={styles.detailImage} resizeMode="contain" />
                   <View style={styles.detailImageHint}>
                     <MaterialIcons name="zoom-out-map" size={14} color={Colors.textInverse} />
                     <Text style={styles.detailImageHintText}>Büyütmek için dokun</Text>
@@ -650,21 +658,21 @@ export default function CabinetScreen() {
                   <View style={styles.detailPlaceholderIconCircle}>
                     <MaterialIcons name="medication" size={56} color={Colors.primary} />
                   </View>
-                  <Text style={styles.detailPlaceholderLabel}>{selectedMedicine.name}</Text>
+                  <Text style={styles.detailPlaceholderLabel}>{detailSelectedMedicine.name}</Text>
                   <Text style={styles.detailPlaceholderSub}>İlaç görseli eklenmemiş</Text>
                 </View>
               )}
-              <DetailRow label="Doz" value={selectedMedicine.dosage} />
-              <DetailRow label="Sıklık" value={selectedMedicine.frequency} />
-              <DetailRow label="Kullanım Zamanı" value={mealTimingLabel(selectedMedicine.mealTiming)} />
-              <DetailRow label="Ne İçin" value={selectedMedicine.purpose} />
-              <DetailRow label="Kullanım Talimatları" value={selectedMedicine.description} />
-              <DetailRow label="Yan Etkiler" value={selectedMedicine.sideEffects} warn />
-              <DetailRow label="Son Kullanma Tarihi" value={selectedMedicine.expiryDate} />
-              {selectedMedicine.quantity !== undefined && selectedMedicine.quantity > 0 && (
-                <DetailRow label="Adet" value={`${selectedMedicine.quantity} adet`} />
+              <DetailRow label="Doz" value={detailSelectedMedicine.dosage} />
+              <DetailRow label="Sıklık" value={detailSelectedMedicine.frequency} />
+              <DetailRow label="Kullanım Zamanı" value={mealTimingLabel(detailSelectedMedicine.mealTiming)} />
+              <DetailRow label="Ne İçin" value={detailSelectedMedicine.purpose} />
+              <DetailRow label="Kullanım Talimatları" value={detailSelectedMedicine.description} />
+              <DetailRow label="Yan Etkiler" value={detailSelectedMedicine.sideEffects} warn />
+              <DetailRow label="Son Kullanma Tarihi" value={detailSelectedMedicine.expiryDate} />
+              {detailSelectedMedicine.quantity !== undefined && detailSelectedMedicine.quantity > 0 && (
+                <DetailRow label="Adet" value={`${detailSelectedMedicine.quantity} adet`} />
               )}
-              <Button title="İlacı Sil" onPress={() => handleDelete(selectedMedicine.id)} variant="danger" fullWidth style={{ marginTop: 24 }} icon={<MaterialIcons name="delete" size={16} color={Colors.textInverse} />} />
+              <Button title="İlacı Sil" onPress={() => handleDelete(detailSelectedMedicine.id)} variant="danger" fullWidth style={{ marginTop: 24 }} icon={<MaterialIcons name="delete" size={16} color={Colors.textInverse} />} />
             </ScrollView>
 
             <ConfirmModal
@@ -694,9 +702,9 @@ export default function CabinetScreen() {
                   showsVerticalScrollIndicator={false}
                   contentContainerStyle={styles.viewerContent}
                 >
-                  {medImageUrls[selectedMedicine.id] && (
+                  {medImageUrls[detailSelectedMedicine.id] && (
                     <Image
-                      source={{ uri: medImageUrls[selectedMedicine.id]! }}
+                      source={{ uri: medImageUrls[detailSelectedMedicine.id]! }}
                       style={{ width: screenWidth, height: screenHeight * 0.8 }}
                       resizeMode="contain"
                     />
@@ -750,6 +758,7 @@ function AiFormField({
         placeholderTextColor={Colors.textMuted}
         multiline={multiline}
         numberOfLines={multiline ? 3 : 1}
+        inputAccessoryViewID={multiline ? KEYBOARD_DONE_ID : undefined}
         keyboardType={keyboardType}
         editable={!disabled}
       />

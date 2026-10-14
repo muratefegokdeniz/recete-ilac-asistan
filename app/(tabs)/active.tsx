@@ -10,7 +10,7 @@ import * as ImagePicker from "expo-image-picker";
 import { MaterialIcons, Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField, UpgradePromptModal, AiAccuracyNote } from "../../components/ui";
+import { Button, EmptyState, FrequencyPicker, MealTimingPicker, ConfirmModal, TimePickerField, DatePickerField, UpgradePromptModal, AiAccuracyNote, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
 import { ChildProfileModal } from "../../components/ChildProfileModal";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useTutorial } from "../../context/TutorialContext";
@@ -148,9 +148,10 @@ export default function ActiveScreen() {
     setDueReminders(due);
   }
 
-  async function openModal() {
-    const cabinet = await getAllMedicines();
-    setCabinetMedicines(cabinet);
+  function openModal() {
+    // Pencere ağ isteğini beklemeden açılsın; dolap listesi yalnızca
+    // "Dolabımdan" sekmesinde lazım, arkada yüklenir.
+    getAllMedicines().then(setCabinetMedicines).catch(() => {});
     setShowModal(true);
     setAddMode("manual");
     setPhotoError(null);
@@ -664,6 +665,7 @@ export default function ActiveScreen() {
 
                       <DatePickerField label="Başlangıç Tarihi" value={form.startDate} onChange={(v) => setForm((f) => ({ ...f, startDate: v }))} />
                       <DatePickerField label="Bitiş Tarihi (opsiyonel)" value={form.endDate} onChange={(v) => setForm((f) => ({ ...f, endDate: v }))} placeholder="Tarih seç (opsiyonel)" />
+                      <KeyboardDoneBar />
                       <FormField label="Notlar" value={form.notes} onChange={(v) => setForm((f) => ({ ...f, notes: v }))} placeholder="Aç karnına al gibi notlar..." multiline />
                     </View>
                   </View>
@@ -705,7 +707,10 @@ export default function ActiveScreen() {
                   ))}
                 </View>
                 {skipReason === "Diğer" && (
-                  <TextInput style={styles.formInput} value={skipCustom} onChangeText={setSkipCustom} placeholder="Nedeninizi yazın..." placeholderTextColor={Colors.textMuted} multiline />
+                  <>
+                    <TextInput style={styles.formInput} value={skipCustom} onChangeText={setSkipCustom} placeholder="Nedeninizi yazın..." placeholderTextColor={Colors.textMuted} multiline inputAccessoryViewID={KEYBOARD_DONE_ID} />
+                    <KeyboardDoneBar />
+                  </>
                 )}
                 {skipReasonError && (
                   <View style={styles.addErrorBox}>
@@ -930,6 +935,7 @@ function FormField({ label, value, onChange, placeholder, multiline }: {
         style={[styles.formInput, multiline && styles.formInputMulti]}
         value={value} onChangeText={onChange} placeholder={placeholder}
         placeholderTextColor={Colors.textMuted} multiline={multiline} numberOfLines={multiline ? 3 : 1}
+        inputAccessoryViewID={multiline ? KEYBOARD_DONE_ID : undefined}
       />
     </View>
   );
