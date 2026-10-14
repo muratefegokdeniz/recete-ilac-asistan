@@ -17,7 +17,7 @@ import { useTutorial } from "../../context/TutorialContext";
 import { useTutorialHighlight } from "../../hooks/useTutorialHighlight";
 import {
   getAllActiveMedicines, addActiveMedicine, deleteActiveMedicine,
-  markDoseTaken, skipDose, getTodayDoses, getAllMedicines,
+  markDoseTaken, skipDose, getTodayDosesForMedicines, getAllMedicines,
   getFamilyMembers, addFamilyMember, deleteFamilyMember,
   hasAiAccess, hasFamilyAccess,
 } from "../../services/database";
@@ -29,7 +29,7 @@ import { fallbackMemberColor } from "../../constants/MemberColors";
 import { useAuth } from "../../context/AuthContext";
 
 type AddMode = "manual" | "cabinet" | "photo";
-interface DueReminder { medicineId: string; medicineName: string; time: string; }
+interface DueReminder { medicineId: string; medicineName: string; time: string; memberName?: string; }
 
 const SKIP_REASONS = [
   "Unutmuştum", "Yan etki yaşadım", "İlaç yanımda değildi",
@@ -111,8 +111,7 @@ export default function ActiveScreen() {
       const list = await getAllActiveMedicines();
       setMedicines(list);
       medicinesRef.current = list;
-      const doseMap: Record<string, TakenDose[]> = {};
-      for (const med of list) doseMap[med.id] = await getTodayDoses(med.id);
+      const doseMap = await getTodayDosesForMedicines(list.map((m) => m.id));
       setTodayDoseMap(doseMap);
       doseMapRef.current = doseMap;
     } catch (e) { console.error(e); }
@@ -132,7 +131,7 @@ export default function ActiveScreen() {
         const handled = doses.some((d) => d.scheduledTime.startsWith(today) && d.scheduledTime.includes(time));
 
         if (Math.abs(diff) <= 30 && !handled && !dismissedRef.current.has(`${med.id}_${time}`)) {
-          due.push({ medicineId: med.id, medicineName: med.medicineName, time });
+          due.push({ medicineId: med.id, medicineName: med.medicineName, time, memberName: med.memberName || undefined });
         }
 
         // Çocuğun 15+ dakikadır "aldım" demediği dozlar için aileye bildirim gönder.
@@ -336,6 +335,12 @@ export default function ActiveScreen() {
     selectedMember === "Ben" ? !m.memberName : m.memberName === selectedMember
   );
 
+  // "Aldın mı?" kartları da seçili üyeye göre: Ben'de sadece benim, çocuğun
+  // sekmesinde sadece o çocuğun ilaçları.
+  const filteredDueReminders = dueReminders.filter((r) =>
+    selectedMember === "Ben" ? !r.memberName : r.memberName === selectedMember
+  );
+
   const totalDoses = filteredMedicines.reduce((s, m) => s + m.reminderTimes.length, 0);
   const takenToday = filteredMedicines
     .map((m) => todayDoseMap[m.id] ?? [])
@@ -433,14 +438,16 @@ export default function ActiveScreen() {
       <ScrollView style={styles.scroll} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
         {/* Due reminder banners */}
-        {dueReminders.map((r) => (
+        {filteredDueReminders.map((r) => (
           <View key={`${r.medicineId}_${r.time}`} style={styles.dueBanner}>
             <View style={styles.dueBannerLeft}>
               <View style={styles.dueBannerIconWrap}>
                 <MaterialIcons name="alarm" size={20} color={Colors.textInverse} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.dueBannerTitle}>İlacını aldın mı?</Text>
+                <Text style={styles.dueBannerTitle}>
+                  {r.memberName ? `${r.memberName} ilacını aldı mı?` : "İlacını aldın mı?"}
+                </Text>
                 <Text style={styles.dueBannerName}>{r.medicineName} · {r.time}</Text>
               </View>
             </View>

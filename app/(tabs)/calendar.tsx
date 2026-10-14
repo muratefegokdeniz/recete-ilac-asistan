@@ -9,7 +9,7 @@ import { MaterialIcons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import {
-  getAllActiveMedicines, getDosesForDateRange, markDoseTaken, skipDose, getFamilyMembers,
+  getAllActiveMedicines, getDosesForMedicinesInRange, markDoseTaken, skipDose, getFamilyMembers,
 } from "../../services/database";
 import { ActiveMedicine, TakenDose, FamilyMember } from "../../types";
 import { fallbackMemberColor } from "../../constants/MemberColors";
@@ -94,10 +94,7 @@ export default function CalendarScreen() {
       const endDate = `${year}-${String(month + 1).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
       // Load all taken doses for the month per medicine
-      const dosesByMed: Record<string, TakenDose[]> = {};
-      for (const med of meds) {
-        dosesByMed[med.id] = await getDosesForDateRange(med.id, startDate, endDate);
-      }
+      const dosesByMed = await getDosesForMedicinesInRange(meds.map((m) => m.id), startDate, endDate);
 
       // Build calendar data
       const data: CalData = {};

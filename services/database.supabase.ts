@@ -265,6 +265,39 @@ export async function getTodayDoses(activeMedicineId: string): Promise<TakenDose
   return (data ?? []).map(rowToTakenDose);
 }
 
+// Birden çok ilacın dozları tek sorguda (ilaç başına ayrı istek atmak ilaç
+// sayısı kadar ağ gecikmesi demekti). Supabase bir yanıtta en fazla 1000 satır
+// döndürdüğü için sayfalıyoruz — ör. aylık takvimde 12 ilaç × 3 doz × 31 gün.
+export async function getDosesForMedicinesInRange(
+  activeMedicineIds: string[], startDate: string, endDate: string
+): Promise<Record<string, TakenDose[]>> {
+  const byMedicine: Record<string, TakenDose[]> = {};
+  for (const id of activeMedicineIds) byMedicine[id] = [];
+  if (activeMedicineIds.length === 0) return byMedicine;
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await supabase
+      .from("taken_doses")
+      .select("*")
+      .in("active_medicine_id", activeMedicineIds)
+      .gte("scheduled_time", `${startDate}T00:00:00`)
+      .lte("scheduled_time", `${endDate}T23:59:59`)
+      .order("id")
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
+    for (const row of data ?? []) {
+      (byMedicine[row.active_medicine_id] ??= []).push(rowToTakenDose(row));
+    }
+    if (!data || data.length < PAGE) break;
+  }
+  return byMedicine;
+}
+
+export async function getTodayDosesForMedicines(activeMedicineIds: string[]): Promise<Record<string, TakenDose[]>> {
+  const today = new Date().toISOString().split("T")[0];
+  return getDosesForMedicinesInRange(activeMedicineIds, today, today);
+}
+
 export async function getDosesForDateRange(activeMedicineId: string, startDate: string, endDate: string): Promise<TakenDose[]> {
   const { data, error } = await supabase
     .from("taken_doses")
