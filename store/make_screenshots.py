@@ -3,7 +3,7 @@
 Kullanım:
     python3 store/make_screenshots.py <girdi_klasörü>
 
-Girdi klasöründe SLIDES listesindeki dosya adları (01.png, 02.png, ...) olmalı.
+Girdi klasöründe SLIDES listesindeki dosya adları (01.png veya image01.png, ...) olmalı.
 Çıktı: store/screenshots/ altında 6.9" iPhone boyutu (1320x2868), App Store
 Connect'in kabul ettiği RGB PNG'ler.
 """
@@ -17,6 +17,9 @@ BG = (11, 110, 110)          # #0b6e6e — ikon arka planı
 TITLE_COLOR = (255, 255, 255)
 SUB_COLOR = (207, 238, 233)
 FONT_PATH = "/System/Library/Fonts/SFNS.ttf"
+# iPhone durum çubuğu (saat, pil, Dynamic Island, "◀ TestFlight") — 1320 px
+# genişlikteki ekran görüntüsünde üstten bu kadar kesilir.
+STATUS_BAR_PX_AT_1320 = 186
 
 # Tab sırasıyla: Ana Sayfa → Takip → Reçete → Dolabım → Takvim → Asistan
 SLIDES = [
@@ -62,6 +65,8 @@ def make(src: str, title: str, subtitle: str, dst: str) -> None:
     y = draw_centered(draw, subtitle, y + 22, font(48, False), SUB_COLOR, 12)
 
     shot = Image.open(src).convert("RGB")
+    crop = round(STATUS_BAR_PX_AT_1320 * shot.width / 1320)
+    shot = shot.crop((0, crop, shot.width, shot.height))
     target_w = 1040
     shot = shot.resize((target_w, round(shot.height * target_w / shot.width)), Image.LANCZOS)
     frame_pad = 14
@@ -89,11 +94,10 @@ def main() -> None:
     out_dir = os.path.join(os.path.dirname(__file__), "screenshots")
     os.makedirs(out_dir, exist_ok=True)
     for name, title, subtitle in SLIDES:
-        src = next(
-            (os.path.join(src_dir, name + ext) for ext in (".png", ".PNG", ".jpg", ".jpeg", ".JPG")
-             if os.path.exists(os.path.join(src_dir, name + ext))),
-            None,
-        )
+        candidates = [prefix + name + ext for prefix in ("", "image")
+                      for ext in (".png", ".PNG", ".jpg", ".jpeg", ".JPG")]
+        src = next((os.path.join(src_dir, c) for c in candidates
+                    if os.path.exists(os.path.join(src_dir, c))), None)
         if not src:
             print(f"atlandı: {name} bulunamadı")
             continue
