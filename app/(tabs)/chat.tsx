@@ -378,6 +378,22 @@ export default function ChatScreen() {
   );
 }
 
+// Model cevaplarını hafif markdown ile yazıyor (**kalın**, "- " madde, "#"
+// başlık); RN Text bunları ham gösterdiği için yıldızlar ekranda kalıyordu.
+// Tam bir markdown motoru yerine yalnızca bu üç kalıbı dönüştürüyoruz.
+function renderAssistantText(content: string): React.ReactNode[] {
+  const lines = content.split("\n").map((line) => {
+    const heading = line.match(/^\s*#{1,6}\s+(.*)$/);
+    if (heading) return `**${heading[1]}**`;
+    return line.replace(/^(\s*)[-*]\s+/, "$1• ");
+  });
+  return lines.join("\n").split(/(\*\*[^*]+\*\*)/g).map((part, i) =>
+    part.startsWith("**") && part.endsWith("**") && part.length > 4
+      ? <Text key={i} style={styles.bubbleTextBold}>{part.slice(2, -2)}</Text>
+      : part
+  );
+}
+
 function MessageBubble({ message }: { message: ChatMessage }) {
   const isUser = message.role === "user";
   return (
@@ -389,7 +405,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
       )}
       <View style={[styles.bubble, isUser ? styles.bubbleUser : styles.bubbleAssistant]}>
         <Text style={[styles.bubbleText, isUser ? styles.bubbleTextUser : styles.bubbleTextAssistant]}>
-          {message.content}
+          {isUser ? message.content : renderAssistantText(message.content)}
         </Text>
         <Text style={[styles.bubbleTime, isUser ? styles.bubbleTimeUser : styles.bubbleTimeAssistant]}>
           {new Date(message.timestamp).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}
@@ -514,6 +530,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.border, ...Shadows.sm,
   },
   bubbleText: { fontSize: 14, lineHeight: 21 },
+  bubbleTextBold: { fontWeight: "700" },
   bubbleTextUser: { color: Colors.textInverse },
   bubbleTextAssistant: { color: Colors.text },
   bubbleTime: { fontSize: 10, marginTop: 4 },
