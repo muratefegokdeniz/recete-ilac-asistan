@@ -91,7 +91,7 @@ def make(src: str, title: str, subtitle: str, dst: str) -> None:
 
 def main() -> None:
     src_dir = sys.argv[1]
-    out_dir = os.path.join(os.path.dirname(__file__), "screenshots")
+    out_dir = os.path.join(os.path.dirname(__file__), "screenshots", "6.9-inch-1320x2868")
     os.makedirs(out_dir, exist_ok=True)
     for name, title, subtitle in SLIDES:
         candidates = [prefix + name + ext for prefix in ("", "image")
