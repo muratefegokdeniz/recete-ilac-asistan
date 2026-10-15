@@ -50,22 +50,22 @@ Reçeteni fotoğrafla, yapay zeka ilaçlarını okusun. Doz hatırlatıcıları 
 ```
 İlaç Asistanı, reçetelerini, ilaçlarını ve çocuklarının ilaç takibini tek bir yerden düzenli tutman için geliştirilmiş ücretsiz bir uygulamadır.
 
-✓ REÇETE TARAMA
+REÇETE TARAMA
 Reçetenin fotoğrafını çek ya da ilaç adlarını yaz; yapay zeka ilaç isimlerini, dozları ve kullanım sıklığını senin için çıkarsın. Sonuçları kaydetmeden önce gözden geçirip düzeltebilirsin.
 
-✓ GÜNLÜK İLAÇ PROGRAMI VE HATIRLATICILAR
+GÜNLÜK İLAÇ PROGRAMI VE HATIRLATICILAR
 Sabah, öğle ve akşam dozlarını kaçırma. Belirlediğin saatlerde bildirim gelir, "Aldım" ya da "Atla" diyerek takibini tek dokunuşla güncellersin.
 
-✓ İLAÇ DOLABI
+İLAÇ DOLABI
 Evindeki ilaçları fotoğraflarıyla birlikte dijital bir dolapta tut; son kullanma tarihi geçmiş veya yaklaşan ilaçları bir bakışta gör.
 
-✓ ÇOCUKLARIN İÇİN AİLE TAKİBİ
+ÇOCUKLARIN İÇİN AİLE TAKİBİ
 Çocuklarının ilaçlarını ve aşı takvimini kendi hesabından yönet. Tüm ailenin günlük programını tek ekranda gör; istersen çocuğun kendi telefonundan, senin onayınla, yalnızca kendi dozlarını işaretleyebileceği basit bir ekrana bağlanabilir.
 
-✓ İLAÇ ASİSTANI
+İLAÇ ASİSTANI
 İlaç etkileşimleri, yan etkiler, kullanım zamanlaması ve beslenmeyle ilişkisi hakkındaki sorularını yapay zeka destekli asistana sor. Kullandığın ilaçların etkileşimini tek dokunuşla sorabilirsin.
 
-✓ TAKVİM
+TAKVİM
 Aylık doz programını ve ne kadarını düzenli aldığını takvim üzerinde izle.
 
 GİZLİLİK
