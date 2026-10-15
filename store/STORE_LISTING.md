@@ -33,15 +33,14 @@ Reçete tara, ilaç hatırlatıcı kur, aileni akıllı ilaç takibiyle koru.
 ## 3. App Store — Alt Başlık / Subtitle (max 30 karakter)
 
 ```
-Akıllı İlaç Takip Asistanı
+Doz hatırlatıcı, aile takibi
 ```
-(26 karakter)
+(28 karakter — uygulama adındaki "İlaç"/"Reçete" kelimeleri tekrar edilmedi; Apple ad + alt başlık + anahtar kelimeleri birlikte indeksliyor)
 
 ## 4. App Store — Tanıtım Metni / Promotional Text (max 170 karakter, incelemesiz güncellenebilir)
 
 ```
-Reçeteni fotoğrafla, ilaçlarını AI ile analiz et, doz hatırlatıcılarını kur ve
-tüm aileni tek ekrandan takip et.
+Reçeteni fotoğrafla, yapay zeka ilaçlarını okusun. Doz hatırlatıcıları kur, ilaç dolabını ve çocuklarının ilaçlarını tek ekrandan takip et.
 ```
 
 ---
@@ -49,36 +48,31 @@ tüm aileni tek ekrandan takip et.
 ## 5. Uzun Açıklama (her iki mağaza — max 4000 karakter)
 
 ```
-İlaç Asistanı, reçetelerinizi ve ilaçlarınızı tek bir yerden akıllıca yönetmenizi
-sağlayan bir sağlık takip uygulamasıdır.
+İlaç Asistanı, reçetelerini, ilaçlarını ve çocuklarının ilaç takibini tek bir yerden düzenli tutman için geliştirilmiş ücretsiz bir uygulamadır.
 
 ✓ REÇETE TARAMA
-Reçetenizin fotoğrafını çekin, yapay zeka ilaç isimlerini, dozlarını ve kullanım
-sıklığını sizin için otomatik olarak okusun.
-
-✓ İLAÇ DOLABI
-Evinizdeki ilaçları dijital bir dolapta takip edin; stoğu azalan veya son
-kullanma tarihi yaklaşan ilaçlar için uyarı alın.
+Reçetenin fotoğrafını çek ya da ilaç adlarını yaz; yapay zeka ilaç isimlerini, dozları ve kullanım sıklığını senin için çıkarsın. Sonuçları kaydetmeden önce gözden geçirip düzeltebilirsin.
 
 ✓ GÜNLÜK İLAÇ PROGRAMI VE HATIRLATICILAR
-Sabah, öğle, akşam dozlarınızı kaçırmayın. Uygulama size doğru saatte bildirim
-gönderir, "Aldım" diyerek takibinizi tek dokunuşla güncelleyin.
+Sabah, öğle ve akşam dozlarını kaçırma. Belirlediğin saatlerde bildirim gelir, "Aldım" ya da "Atla" diyerek takibini tek dokunuşla güncellersin.
 
-✓ AİLE PAYLAŞIMI
-Eşinizin, çocuklarınızın veya bakımını üstlendiğiniz yakınlarınızın ilaç
-takibini aynı hesaptan yönetin. Çocuk profilleri kendi basit arayüzünden
-dozlarını işaretleyebilir.
+✓ İLAÇ DOLABI
+Evindeki ilaçları fotoğraflarıyla birlikte dijital bir dolapta tut; son kullanma tarihi geçmiş veya yaklaşan ilaçları bir bakışta gör.
 
-✓ İLAÇ ASİSTANI (AI SOHBET)
-İlaç etkileşimleri, yan etkiler, kullanım zamanlaması ve beslenme ile ilişkisi
-hakkında sorularınızı yapay zeka destekli asistana sorun.
+✓ ÇOCUKLARIN İÇİN AİLE TAKİBİ
+Çocuklarının ilaçlarını ve aşı takvimini kendi hesabından yönet. Tüm ailenin günlük programını tek ekranda gör; istersen çocuğun kendi telefonundan, senin onayınla, yalnızca kendi dozlarını işaretleyebileceği basit bir ekrana bağlanabilir.
 
-✓ TAKVİM GÖRÜNÜMÜ
-Geçmiş ve gelecek doz programınızı takvim üzerinden inceleyin.
+✓ İLAÇ ASİSTANI
+İlaç etkileşimleri, yan etkiler, kullanım zamanlaması ve beslenmeyle ilişkisi hakkındaki sorularını yapay zeka destekli asistana sor. Kullandığın ilaçların etkileşimini tek dokunuşla sorabilirsin.
 
-Not: İlaç Asistanı genel bilgilendirme ve hatırlatma amaçlıdır, tıbbi tavsiye
-yerine geçmez. Tedavi kararları için lütfen doktorunuza veya eczacınıza
-danışın.
+✓ TAKVİM
+Aylık doz programını ve ne kadarını düzenli aldığını takvim üzerinde izle.
+
+GİZLİLİK
+Yapay zeka özellikleri yalnızca sen izin verdikten sonra çalışır; iznini istediğin zaman Profil'den kapatabilirsin. Verilerin reklam için kullanılmaz ve satılmaz. Hesabını ve tüm verilerini uygulama içinden kalıcı olarak silebilirsin.
+
+ÖNEMLİ
+İlaç Asistanı bir tıbbi cihaz değildir; teşhis koymaz ve tedavi önermez. Yapay zekanın ürettiği bilgiler hatalı olabilir; ilaç kullanımınla ilgili kararlar için doktoruna veya eczacına danış.
 ```
 
 ---
@@ -86,8 +80,9 @@ danışın.
 ## 6. App Store — Anahtar Kelimeler (max 100 karakter, virgülle ayrılmış, boşluksuz)
 
 ```
-ilaç,reçete,hatırlatıcı,doz,eczane,aile,sağlık,ilaç takip,tedavi,alarm,ilaç dolabı
+hatırlatıcı,doz,eczane,aile,sağlık,tedavi,alarm,dolap,vitamin,hap,şurup,çocuk,aşı,takvim,antibiyotik
 ```
+(100 karakter — "ilaç", "reçete", "asistan", "takip" ad/alt başlıkta zaten var, tekrar edilmedi)
 
 ---
 
