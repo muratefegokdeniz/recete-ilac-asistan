@@ -331,15 +331,34 @@ export default function ActiveScreen() {
   }
 
   // Seçili üyeye göre filtrele
+  // "Ben" ana kullanıcının (yönetici) görünümü: kendi ve tüm çocuklarının
+  // ilaçları. Çocuk sekmesinde yalnızca o çocuğun ilaçları.
+  const isAdminView = selectedMember === "Ben";
+  const visibleChildren = allChildren;
   const filteredMedicines = medicines.filter((m) =>
-    selectedMember === "Ben" ? !m.memberName : m.memberName === selectedMember
+    isAdminView
+      ? !m.memberName || visibleChildren.includes(m.memberName)
+      : m.memberName === selectedMember
   );
 
-  // "Aldın mı?" kartları da seçili üyeye göre: Ben'de sadece benim, çocuğun
-  // sekmesinde sadece o çocuğun ilaçları.
+  // "Aldın mı?" kartları da aynı kurala uyar: Ben'de herkesinki, çocuğun
+  // sekmesinde sadece o çocuğunki.
   const filteredDueReminders = dueReminders.filter((r) =>
-    selectedMember === "Ben" ? !r.memberName : r.memberName === selectedMember
+    isAdminView
+      ? !r.memberName || visibleChildren.includes(r.memberName)
+      : r.memberName === selectedMember
   );
+
+  // Asistan'a hazır etkileşim sorusu: görünen ilaçların benzersiz adları
+  function askInteractions() {
+    const names = Array.from(new Set(filteredMedicines.map((m) => m.medicineName.trim()))).filter(Boolean);
+    const question = names.length >= 2
+      ? `Şu ilaçları birlikte kullanıyorum: ${names.join(", ")}. Aralarında etkileşim var mı?`
+      : names.length === 1
+        ? `${names[0]} ilacını kullanıyorum. Başka hangi ilaçlarla birlikte kullanırken dikkat etmeliyim?`
+        : "";
+    router.push({ pathname: "/(tabs)/chat", params: question ? { prefill: question } : {} });
+  }
 
   const totalDoses = filteredMedicines.reduce((s, m) => s + m.reminderTimes.length, 0);
   const takenToday = filteredMedicines
@@ -425,7 +444,9 @@ export default function ActiveScreen() {
         <View style={styles.progressStrip}>
           <View style={styles.progressInfo}>
             <Text style={styles.progressLabel}>
-              {selectedMember === "Ben" ? "Bugünkü ilerleme" : `${selectedMember} - Bugünkü ilerleme`}
+              {isAdminView
+                ? (allChildren.length > 0 ? "Tüm aile - Bugünkü ilerleme" : "Bugünkü ilerleme")
+                : `${selectedMember} - Bugünkü ilerleme`}
             </Text>
             <Text style={styles.progressCount}>{takenToday}/{totalDoses} doz</Text>
           </View>
@@ -476,6 +497,8 @@ export default function ActiveScreen() {
               <ActiveMedicineCard
                 key={med.id}
                 medicine={med}
+                memberLabel={isAdminView && med.memberName ? med.memberName : undefined}
+                memberColor={med.memberName ? memberColorFor(med.memberName) : undefined}
                 todayDoses={todayDoseMap[med.id] ?? []}
                 onTake={(time) => handleTakeDose(med.id, `${today}T${time}`)}
                 onSkip={(time) => handleSkipDose(med.id, `${today}T${time}`)}
@@ -484,19 +507,20 @@ export default function ActiveScreen() {
             ))}
 
             {/* Insight card */}
-            <View style={styles.insightCard}>
+            <TouchableOpacity style={styles.insightCard} onPress={askInteractions} activeOpacity={0.85}>
               <View style={styles.insightLeft}>
                 <View style={styles.insightIconWrap}>
                   <MaterialIcons name="auto-awesome" size={24} color={Colors.textInverse} />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.insightTitle}>İlaç Etkileşim Kontrolü</Text>
+                  <Text style={styles.insightTitle}>İlaç Etkileşimlerini Sor</Text>
                   <Text style={styles.insightBody}>
-                    Sisteme eklediğin her ilaç, mevcut reçetelerinle etkileşim açısından AI tarafından analiz edilir.
+                    Birlikte kullandığın ilaçlar hakkında soru mu var? Asistan'a sor, ilaçlarının birbiriyle etkileşimini açıklasın.
                   </Text>
                 </View>
+                <MaterialIcons name="chevron-right" size={22} color={Colors.textInverse} style={{ alignSelf: "center" }} />
               </View>
-            </View>
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
@@ -850,8 +874,8 @@ function CabinetPicker({ medicines, onSelect }: { medicines: Medicine[]; onSelec
   );
 }
 
-function ActiveMedicineCard({ medicine, todayDoses, onTake, onSkip, onDelete }: {
-  medicine: ActiveMedicine; todayDoses: TakenDose[];
+function ActiveMedicineCard({ medicine, todayDoses, onTake, onSkip, onDelete, memberLabel, memberColor }: {
+  medicine: ActiveMedicine; todayDoses: TakenDose[]; memberLabel?: string; memberColor?: string;
   onTake: (time: string) => void; onSkip: (time: string) => void; onDelete: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -865,6 +889,12 @@ function ActiveMedicineCard({ medicine, todayDoses, onTake, onSkip, onDelete }: 
           <MaterialIcons name="medication" size={22} color={Colors.primary} />
         </View>
         <View style={styles.medInfo}>
+          {memberLabel && (
+            <View style={[styles.memberBadge, { backgroundColor: (memberColor ?? Colors.primary) + "22" }]}>
+              <View style={[styles.memberBadgeDot, { backgroundColor: memberColor ?? Colors.primary }]} />
+              <Text style={[styles.memberBadgeText, { color: memberColor ?? Colors.primary }]}>{memberLabel}</Text>
+            </View>
+          )}
           <Text style={styles.medName}>{medicine.medicineName}</Text>
           <Text style={styles.medDosage}>
             {medicine.dosage} · {medicine.frequency}
@@ -1212,6 +1242,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.2)", alignItems: "center", justifyContent: "center",
     flexShrink: 0,
   },
+  memberBadge: {
+    flexDirection: "row", alignItems: "center", gap: 5, alignSelf: "flex-start",
+    paddingHorizontal: 8, paddingVertical: 2, borderRadius: 999, marginBottom: 4,
+  },
+  memberBadgeDot: { width: 6, height: 6, borderRadius: 3 },
+  memberBadgeText: { fontSize: 11, fontWeight: "700" },
   insightTitle: { fontSize: 15, fontWeight: "700", color: Colors.textInverse, marginBottom: 4 },
   insightBody: { fontSize: 13, color: "rgba(255,255,255,0.85)", lineHeight: 19 },
 

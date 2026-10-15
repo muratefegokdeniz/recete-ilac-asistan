@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons, MaterialIcons } from "@expo/vector-icons";
-import { useFocusEffect, useRouter } from "expo-router";
+import { useFocusEffect, useRouter, useLocalSearchParams } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
 import { chatWithAssistant } from "../../services/anthropic";
 import {
@@ -55,6 +55,15 @@ export default function ChatScreen() {
   const router = useRouter();
   const [messages, setMessages] = useState<ChatMessage[]>([makeWelcome()]);
   const [input, setInput] = useState("");
+  // Takip ekranındaki "İlaç Etkileşimlerini Sor" alanından hazır soru gelir;
+  // gönderilmeden önce kullanıcı görüp düzenleyebilsin diye sadece kutuya yazılır.
+  const { prefill } = useLocalSearchParams<{ prefill?: string }>();
+  useEffect(() => {
+    if (prefill) {
+      setInput(prefill);
+      router.setParams({ prefill: undefined });
+    }
+  }, [prefill]);
   const [loading, setLoading] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
