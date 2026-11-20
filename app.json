@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "İlaç Asistanı",
+    "name": "Ilac Asistani",
     "slug": "recete-ilac-asistan",
     "version": "1.1.0",
     "orientation": "portrait",
@@ -16,7 +16,7 @@
         "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "12"
+      "buildNumber": "13"
     },
     "android": {
       "package": "com.muratefegokdeniz.receteilacasistan",
@@ -38,7 +38,8 @@
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro",
-      "output": "single"
+      "output": "single",
+      "name": "İlaç Asistanı"
     },
     "plugins": [
       "expo-router",
@@ -67,6 +68,12 @@
           "resizeMode": "contain",
           "backgroundColor": "#0b6e6e",
           "imageWidth": 200
+        }
+      ],
+      [
+        "./plugins/withDisplayName.js",
+        {
+          "displayName": "İlaç Asistanı"
         }
       ]
     ],
