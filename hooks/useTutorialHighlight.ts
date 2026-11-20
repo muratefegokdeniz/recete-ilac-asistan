@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ComponentRef } from "react";
 import { View, Platform, StatusBar } from "react-native";
 import { useTutorial } from "../context/TutorialContext";
 
@@ -17,7 +17,7 @@ import { useTutorial } from "../context/TutorialContext";
 const ANDROID_STATUS_BAR_OFFSET = Platform.OS === "android" ? (StatusBar.currentHeight ?? 0) : 0;
 
 export function useTutorialHighlight(targetId: string) {
-  const ref = useRef<View>(null);
+  const ref = useRef<ComponentRef<typeof View>>(null);
   const tutorial = useTutorial();
   const isActiveStep = tutorial.active && tutorial.currentStep?.targetId === targetId;
 

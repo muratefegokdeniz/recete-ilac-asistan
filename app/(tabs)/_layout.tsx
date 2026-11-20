@@ -1,5 +1,5 @@
 import { Tabs } from "expo-router";
-import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { View, Text, TouchableOpacity, StyleSheet, Platform, useWindowDimensions, type ColorValue } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { MaterialIcons } from "@expo/vector-icons";
 import { usePathname, useRouter } from "expo-router";
@@ -58,11 +58,11 @@ function TabIcon({
 }: {
   name: keyof typeof MaterialIcons.glyphMap;
   focused: boolean;
-  color: string;
+  color: ColorValue;
 }) {
   return (
     <View style={[styles.iconWrapper, focused && styles.iconWrapperActive]}>
-      <MaterialIcons name={name} size={22} color={color} />
+      <MaterialIcons name={name} size={22} color={color as string} />
     </View>
   );
 }
@@ -79,7 +79,7 @@ const tabScreens = [
     name="home"
     options={{
       title: "Ana Sayfa",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="dashboard" focused={focused} color={color} />
       ),
     }}
@@ -90,7 +90,7 @@ const tabScreens = [
     name="active"
     options={{
       title: "Takip",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="alarm" focused={focused} color={color} />
       ),
     }}
@@ -100,7 +100,7 @@ const tabScreens = [
     name="prescriptions"
     options={{
       title: "Reçete",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="document-scanner" focused={focused} color={color} />
       ),
     }}
@@ -110,7 +110,7 @@ const tabScreens = [
     name="cabinet"
     options={{
       title: "Dolabım",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="medical-services" focused={focused} color={color} />
       ),
     }}
@@ -120,7 +120,7 @@ const tabScreens = [
     name="calendar"
     options={{
       title: "Takvim",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="calendar-month" focused={focused} color={color} />
       ),
     }}
@@ -130,7 +130,7 @@ const tabScreens = [
     name="chat"
     options={{
       title: "Asistan",
-      tabBarIcon: ({ focused, color }: { focused: boolean; color: string }) => (
+      tabBarIcon: ({ focused, color }: { focused: boolean; color: ColorValue }) => (
         <TabIcon name="chat" focused={focused} color={color} />
       ),
     }}
@@ -141,6 +141,8 @@ const tabScreens = [
   // mobil web bar'ı (kendi ayrı listeleriyle) bundan etkilenmiyor.
   <Tabs.Screen key="profile" name="profile" options={{ href: null }} />,
 ];
+
+export const unstable_settings = { initialRouteName: "home" };
 
 export default function TabsLayout() {
   const { width } = useWindowDimensions();
@@ -154,7 +156,6 @@ export default function TabsLayout() {
         <WebSidebar />
         <View style={styles.webContent}>
           <Tabs
-            initialRouteName="home"
             screenOptions={{
               headerShown: false,
               tabBarStyle: { display: "none" },
@@ -172,7 +173,6 @@ export default function TabsLayout() {
       <View style={styles.mobileWebContainer}>
         <View style={styles.mobileWebContent}>
           <Tabs
-            initialRouteName="home"
             screenOptions={{
               headerShown: false,
               tabBarStyle: { display: "none" },
@@ -188,7 +188,6 @@ export default function TabsLayout() {
 
   return (
     <Tabs
-      initialRouteName="home"
       screenOptions={{
         headerShown: false,
         tabBarStyle: [

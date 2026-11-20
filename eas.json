@@ -31,7 +31,10 @@
       "android": {
         "buildType": "app-bundle"
       },
-      "channel": "production"
+      "channel": "production",
+      "ios": {
+        "image": "sdk-58"
+      }
     }
   },
   "submit": {

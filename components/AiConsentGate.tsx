@@ -77,7 +77,7 @@ export function AiConsentGate({ active }: { active: boolean }) {
 }
 
 const styles = StyleSheet.create({
-  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: Colors.background, zIndex: 1000, elevation: 1000 },
+  overlay: { ...StyleSheet.absoluteFill, backgroundColor: Colors.background, zIndex: 1000, elevation: 1000 },
   safe: { flex: 1 },
   content: { padding: 24, paddingTop: 32 },
   iconCircle: {

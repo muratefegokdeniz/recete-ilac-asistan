@@ -6,13 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
     "scheme": "ilacasistan",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#0b6e6e"
-    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.muratefegokdeniz.receteilacasistan",
@@ -30,7 +24,6 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0b6e6e"
       },
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "permissions": [
         "android.permission.CAMERA",
@@ -44,7 +37,8 @@
     },
     "web": {
       "favicon": "./assets/favicon.png",
-      "bundler": "metro"
+      "bundler": "metro",
+      "output": "single"
     },
     "plugins": [
       "expo-router",
@@ -65,7 +59,16 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-font",
-      "./plugins/withFixAndroidPackage.js"
+      "./plugins/withFixAndroidPackage.js",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#0b6e6e",
+          "imageWidth": 200
+        }
+      ]
     ],
     "extra": {
       "router": {},

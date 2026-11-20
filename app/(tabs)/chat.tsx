@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, type ComponentRef } from "react";
 import {
   View,
   Text,
@@ -68,7 +68,7 @@ export default function ChatScreen() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<string | null>(null);
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -430,7 +430,7 @@ const styles = StyleSheet.create({
 
   // Drawer
   drawerOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: "rgba(0,0,0,0.35)",
     zIndex: 10,
   },
