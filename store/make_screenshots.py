@@ -3,6 +3,10 @@
 Kullanım:
     python3 store/make_screenshots.py <girdi_klasörü>
 
+ÖNEMLİ (App Store 1.4.2): Ham ekran görüntülerinde AI tarafından üretilmiş doz
+metni (örn. "günlük maksimum doz", "40 kg üzeri çocuklar") görünmemeli. Ham
+görüntüleri yeni sürümle, temiz bir demo hesapla yeniden al.
+
 Girdi klasöründe SLIDES listesindeki dosya adları (01.png veya image01.png, ...) olmalı.
 Çıktı: store/screenshots/ altında 6.9" iPhone boyutu (1320x2868), App Store
 Connect'in kabul ettiği RGB PNG'ler.
@@ -23,12 +27,12 @@ STATUS_BAR_PX_AT_1320 = 186
 
 # Tab sırasıyla: Ana Sayfa → Takip → Reçete → Dolabım → Takvim → Asistan
 SLIDES = [
-    ("01", "İlaçların tek ekranda", "Günlük programın, dozların ve dolabın"),
+    ("01", "İlaçların tek ekranda", "Günlük programın ve ilaç dolabın"),
     ("02", "Hiçbir dozu kaçırma", "Hatırlatma gelsin, tek dokunuşla işaretle"),
-    ("03", "Reçeteni fotoğrafla,\nyapay zeka okusun", "İlaçlar, dozlar ve kullanım saatleri"),
+    ("03", "Reçeteni fotoğrafla,\nyapay zeka okusun", "Reçetendeki ilaçlar düzenli bir listede"),
     ("04", "Evdeki ilaç dolabın", "Son kullanma tarihi ve stok takibi"),
     ("05", "Takvimde tüm aile", "Kendi ve çocuklarının ilaçları bir arada"),
-    ("06", "Aklına takılanı sor", "İlaçlar hakkında yapay zeka asistanı"),
+    ("06", "Aklına takılanı sor", "İlaçlar hakkında genel bilgi asistanı"),
 ]
 
 

@@ -30,9 +30,6 @@ import { useAuth } from "../../context/AuthContext";
 
 const SAMPLE_TUTORIAL_MEDICINE = {
   name: "Parol 500mg Tablet",
-  dosage: "1 tablet",
-  frequency: "Günde 3 kez",
-  mealTiming: "Tok Karnına",
   purpose: "Ağrı ve ateş düşürücü olarak kullanılır.",
   expiryDate: "12.2026",
   quantity: "20 adet",
@@ -195,15 +192,11 @@ export default function CabinetScreen() {
           const updates: Partial<FormState> = {};
 
           if (info.name) { updates.name = info.name; filled.add("name"); }
-          if (info.dosage) { updates.dosage = info.dosage; filled.add("dosage"); }
-          if (info.frequency) { updates.frequency = info.frequency; filled.add("frequency"); }
+          // Doz ve sıklık kutudan doldurulmuyor (App Store 1.4.2): kullanıcı
+          // bunları reçetesine bakarak kendisi girer.
           if (info.purpose) { updates.purpose = info.purpose; filled.add("purpose"); }
           if (info.sideEffects) { updates.sideEffects = info.sideEffects; filled.add("sideEffects"); }
-          if (info.instructions) {
-            updates.description = info.instructions; filled.add("description");
-            const mt = parseMealTiming(info.instructions);
-            if (mt) { updates.mealTiming = mt; filled.add("mealTiming"); }
-          }
+          if (info.activeIngredient) { updates.description = `Etken madde: ${info.activeIngredient}`; filled.add("description"); }
           if (info.expiryDate && info.expiryDate !== "null") { updates.expiryDate = info.expiryDate; filled.add("expiryDate"); }
 
           setForm((f) => ({ ...f, ...updates }));
@@ -509,13 +502,10 @@ export default function CabinetScreen() {
                 <Ionicons name="sparkles" size={22} color={Colors.primary} />
                 <Text style={styles.tutorialIntroTitle}>AI ile İlaç Ekleme</Text>
                 <Text style={styles.tutorialIntroBody}>
-                  İlacın kutusunu ya da prospektüsünü fotoğrafladığında, yapay zeka ilaç adını, dozunu, kullanım sıklığını, ne için kullanıldığını ve son kullanma tarihini otomatik olarak okuyup formu doldurur. Örnek bir sonuç şöyle görünür:
+                  İlacın kutusunu fotoğrafladığında yapay zeka kutuda yazan ilaç adını ve son kullanma tarihini okur, ilacın ne için kullanıldığını kısaca ekler. Doz ve kullanım sıklığını reçetene bakarak sen girersin. Örnek bir sonuç şöyle görünür:
                 </Text>
               </View>
               <DetailRow label="İlaç Adı" value={SAMPLE_TUTORIAL_MEDICINE.name} />
-              <DetailRow label="Doz" value={SAMPLE_TUTORIAL_MEDICINE.dosage} />
-              <DetailRow label="Sıklık" value={SAMPLE_TUTORIAL_MEDICINE.frequency} />
-              <DetailRow label="Kullanım Zamanı" value={SAMPLE_TUTORIAL_MEDICINE.mealTiming} />
               <DetailRow label="Ne İçin" value={SAMPLE_TUTORIAL_MEDICINE.purpose} />
               <DetailRow label="Son Kullanma Tarihi" value={SAMPLE_TUTORIAL_MEDICINE.expiryDate} />
               <DetailRow label="Adet" value={SAMPLE_TUTORIAL_MEDICINE.quantity} />
@@ -586,7 +576,7 @@ export default function CabinetScreen() {
                 <View style={styles.analyzingCard}>
                   <ActivityIndicator size="large" color={Colors.primary} />
                   <Text style={styles.analyzingTitle}>AI İlaç Analiz Ediyor</Text>
-                  <Text style={styles.analyzingSubtitle}>İlaç adı, dozu, kullanım bilgileri ve yan etkiler otomatik doldurulacak...</Text>
+                  <Text style={styles.analyzingSubtitle}>İlaç adı, etken madde, son kullanma tarihi ve genel bilgiler okunuyor...</Text>
                 </View>
               )}
 
@@ -604,7 +594,7 @@ export default function CabinetScreen() {
               {/* Form */}
               <View style={styles.formSection}>
                 <AiFormField label="İlaç Adı *" value={form.name} onChange={(v) => setForm((f) => ({ ...f, name: v }))} placeholder="Örn: Parol 500mg Tablet" aiFilledFields={aiFilledFields} fieldKey="name" disabled={analyzing} />
-                <AiFormField label="Doz" value={form.dosage} onChange={(v) => setForm((f) => ({ ...f, dosage: v }))} placeholder="Örn: Yetişkin 1-2 tablet" aiFilledFields={aiFilledFields} fieldKey="dosage" disabled={analyzing} />
+                <AiFormField label="Doz" value={form.dosage} onChange={(v) => setForm((f) => ({ ...f, dosage: v }))} placeholder="Reçetende yazan doz (örn. 1 tablet)" aiFilledFields={aiFilledFields} fieldKey="dosage" disabled={analyzing} />
                 <FrequencyPicker value={form.frequency ?? ""} onChange={(v) => setForm((f) => ({ ...f, frequency: v }))} />
                 <MealTimingPicker value={form.mealTiming ?? ""} onChange={(v) => setForm((f) => ({ ...f, mealTiming: v }))} />
                 <AiFormField label="Ne İçin Kullanılır" value={form.purpose} onChange={(v) => setForm((f) => ({ ...f, purpose: v }))} placeholder="Hastalık ve belirtiler..." multiline aiFilledFields={aiFilledFields} fieldKey="purpose" disabled={analyzing} />
@@ -798,14 +788,6 @@ async function uriToBase64(uri: string): Promise<string | null> {
       reader.readAsDataURL(blob);
     });
   } catch { return null; }
-}
-
-function parseMealTiming(text: string): "ac" | "tok" | "farketmez" | null {
-  const lower = text.toLowerCase();
-  if (lower.includes("aç karn") || lower.includes("ac karn") || lower.includes("yemekten önce")) return "ac";
-  if (lower.includes("tok karn") || lower.includes("yemekle") || lower.includes("yemekten sonra") || lower.includes("yemeklerle")) return "tok";
-  if (lower.includes("farketmez") || lower.includes("fark etmez")) return "farketmez";
-  return null;
 }
 
 function mealTimingLabel(value?: string): string | undefined {

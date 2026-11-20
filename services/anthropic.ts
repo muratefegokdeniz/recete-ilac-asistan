@@ -2,11 +2,12 @@ import { PrescriptionAnalysis, PrescriptionMedicine } from "../types";
 import { supabase } from "./supabase";
 import { getAiConsent, AI_CONSENT_REQUIRED_MESSAGE } from "./aiConsent";
 
-// Hibrit model rotası: görsel/tıbbi çıkarım gerektiren, hata payı düşük olması
-// gereken çağrılar güçlü modeli kullanır; kısa/düşük riskli metin çağrıları
-// (sohbet, tavsiye, isimle sorgu) çok daha ucuz olan modeli kullanır.
-const MODEL_ACCURACY = "claude-sonnet-5-5";
-const MODEL_LIGHT = "claude-haiku-5-5";
+// Prompt'lar ve model seçimi artık yalnızca sunucuda (supabase/functions/claude-proxy).
+// İstemci sadece işlem türünü ve veriyi gönderir.
+//
+// Önemli: AI doz, miktar, sıklık veya süre ÜRETMEZ. Yalnızca reçetede/kutuda
+// yazanı okur; yazmıyorsa alan boş (null) gelir ve kullanıcı kendisi girer.
+type AiTask = "prescription_image" | "prescription_text" | "medicine_image" | "medicine_name" | "chat";
 
 interface ClaudeResponse {
   content: { type: string; text?: string }[];
@@ -26,21 +27,18 @@ function extractText(response: ClaudeResponse): string {
     .join("");
 }
 
-async function callClaude(params: {
-  model: string;
-  max_tokens: number;
-  system?: string;
-  messages: unknown[];
-}): Promise<ClaudeResponse> {
+async function callClaude(task: AiTask, payload: Record<string, unknown>): Promise<ClaudeResponse> {
   if ((await getAiConsent()) !== "granted") {
     throw new Error(AI_CONSENT_REQUIRED_MESSAGE);
   }
   const { data, error } = await supabase.functions.invoke("claude-proxy", {
-    body: params,
+    body: { task, payload },
   });
   if (error) {
     console.error("[callClaude] Edge Function hatası:", error, "context:", (error as any)?.context);
-    throw error;
+    let message: string | undefined;
+    try { message = (await (error as any)?.context?.json?.())?.error; } catch {}
+    throw new Error(message ?? "Yapay zeka isteği başarısız oldu. Lütfen tekrar deneyin.");
   }
   if (data?.error) {
     console.error("[callClaude] claude-proxy hata döndü:", data.error);
@@ -49,263 +47,80 @@ async function callClaude(params: {
   return data as ClaudeResponse;
 }
 
+function parseJson<T>(text: string): T | null {
+  try {
+    const m = text.match(/\{[\s\S]*\}/);
+    if (m) return JSON.parse(m[0]) as T;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+// Model "null" değerini bazen metin olarak yazıyor; boş/"null" alanları undefined yap.
+function clean<T extends object>(obj: T): T {
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (v == null) continue;
+    if (typeof v === "string" && (!v.trim() || v.trim().toLowerCase() === "null")) continue;
+    out[k] = v;
+  }
+  return out as T;
+}
+
+function cleanAnalysis(a: PrescriptionAnalysis): PrescriptionAnalysis {
+  return {
+    ...clean(a),
+    medicines: Array.isArray(a.medicines) ? a.medicines.map((m) => clean(m)).filter((m) => m.name) : [],
+  };
+}
+
 export async function analyzePrescription(
   base64Image: string,
   mimeType: string = "image/jpeg"
 ): Promise<PrescriptionAnalysis> {
-  const response = await callClaude({
-    model: MODEL_ACCURACY,
-    max_tokens: 8000,
-    system: `Sen bir eczacı asistanısın. Türkçe reçeteleri analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
-Yanıtını her zaman geçerli bir JSON formatında ver.`,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mimeType as
-                | "image/jpeg"
-                | "image/png"
-                | "image/gif"
-                | "image/webp",
-              data: base64Image,
-            },
-          },
-          {
-            type: "text",
-            text: `Bu reçeteyi analiz et ve aşağıdaki JSON formatında yanıt ver. Tüm bilgileri Türkçe yaz.
-
-{
-  "doctorName": "Doktor adı (yoksa null)",
-  "patientName": "Hasta adı (yoksa null)",
-  "date": "Reçete tarihi (yoksa null)",
-  "rawText": "Reçetedeki tüm metin",
-  "medicines": [
-    {
-      "name": "İlaç adı ve formu (örn: Amoksisilin 500mg Kapsül)",
-      "dosage": "Tek seferde alınacak doz (örn: 1 kapsül, 2 tablet)",
-      "frequency": "Günde kaç kez (örn: Günde 3 kez, Her 8 saatte bir)",
-      "duration": "Kaç gün kullanılacak (örn: 7 gün, 10 gün)",
-      "instructions": "Ne zaman alınacak: sabah/öğle/akşam ve aç mı tok mu karnına (örn: Sabah aç karnına, Yemeklerle birlikte)",
-      "purpose": "Bu ilaç ne için yazıldı, hangi şikayete iyi gelir (2-3 cümle)",
-      "sideEffects": "En önemli yan etkiler"
-    }
-  ]
+  const text = extractText(await callClaude("prescription_image", { image: base64Image, mimeType }));
+  const parsed = parseJson<PrescriptionAnalysis>(text);
+  return parsed ? cleanAnalysis(parsed) : { medicines: [], rawText: text };
 }
 
-Reçetede yazan bilgileri birebir oku. Eğer bir alan reçetede yoksa genel tıbbi bilgiden doldur.
-Reçete değilse veya okunamıyorsa boş medicines dizisi ile yanıt ver.`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const text = extractText(response);
-
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as PrescriptionAnalysis;
-    }
-  } catch {
-    // ignore parse error
-  }
-
-  return { medicines: [], rawText: text };
+export async function analyzePrescriptionText(text: string): Promise<PrescriptionAnalysis> {
+  const out = extractText(await callClaude("prescription_text", { text }));
+  const parsed = parseJson<PrescriptionAnalysis>(out);
+  return parsed ? cleanAnalysis(parsed) : { medicines: [], rawText: text };
 }
 
+// İlaç kutusu fotoğrafından okunan bilgiler. Doz/sıklık bilinçli olarak yok:
+// kullanıcı bunları reçetesinden kendisi girer.
 export interface MedicineImageAnalysis {
-  name: string;
-  dosage?: string;
+  name?: string;
+  activeIngredient?: string;
   purpose?: string;
   sideEffects?: string;
-  instructions?: string;
-  frequency?: string;
   expiryDate?: string;
-  activeIngredient?: string;
-}
-
-export async function analyzePrescriptionText(
-  text: string
-): Promise<PrescriptionAnalysis> {
-  const response = await callClaude({
-    model: MODEL_ACCURACY,
-    max_tokens: 8000,
-    system: `Sen bir eczacı asistanısın. Kullanıcının yazdığı reçete metnini analiz edip ilaçlar hakkında detaylı bilgi veriyorsun.
-Yanıtını her zaman geçerli bir JSON formatında ver.`,
-    messages: [
-      {
-        role: "user",
-        content: `Aşağıdaki reçete bilgilerini analiz et ve eksik alanları tıbbi bilginle tamamla. JSON formatında yanıt ver:
-
-${text}
-
-Yanıtını şu JSON formatında ver (Türkçe):
-{
-  "doctorName": "Doktor adı (yoksa null)",
-  "patientName": "Hasta adı (yoksa null)",
-  "date": "Tarih (yoksa null)",
-  "rawText": "Girilen metin",
-  "medicines": [
-    {
-      "name": "İlaç adı ve formu",
-      "dosage": "Tek seferde alınacak doz",
-      "frequency": "Günde kaç kez",
-      "duration": "Kaç gün kullanılacak",
-      "instructions": "Ne zaman alınacak (sabah/öğle/akşam, aç/tok karnına)",
-      "purpose": "Bu ilaç ne için kullanılır (2-3 cümle)",
-      "sideEffects": "En önemli yan etkiler"
-    }
-  ]
-}
-
-Kullanıcının yazdığı ilaç adlarını birebir koru, sadece eksik bilgileri tamamla.`,
-      },
-    ],
-  });
-
-  const text2 = extractText(response);
-
-  try {
-    const jsonMatch = text2.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as PrescriptionAnalysis;
-    }
-  } catch {
-    // ignore parse error
-  }
-
-  return { medicines: [], rawText: text };
 }
 
 export async function analyzeMedicineImage(
   base64Image: string,
   mimeType: string = "image/jpeg"
 ): Promise<MedicineImageAnalysis> {
-  console.log("[analyzeMedicineImage] base64 uzunluğu:", base64Image?.length ?? 0);
-  const response = await callClaude({
-    model: MODEL_ACCURACY,
-    max_tokens: 8000,
-    system: `Sen bir eczacı asistanısın. İlaç görsellerini tanıyıp Türkçe kapsamlı bilgi veriyorsun. Yanıtını JSON formatında ver.`,
-    messages: [
-      {
-        role: "user",
-        content: [
-          {
-            type: "image",
-            source: {
-              type: "base64",
-              media_type: mimeType as
-                | "image/jpeg"
-                | "image/png"
-                | "image/gif"
-                | "image/webp",
-              data: base64Image,
-            },
-          },
-          {
-            type: "text",
-            text: `Bu ilaç görseli veya kutusu hakkında mümkün olduğunca detaylı bilgi ver. Eğer görsel net değilse veya ilaç tanınamıyorsa, gördüğün bilgilere göre en iyi tahmini yap.
-
-JSON formatında yanıt ver (tüm alanları Türkçe doldur):
-{
-  "name": "İlaç adı ve dozu (örn: Parol 500mg Tablet)",
-  "activeIngredient": "Etken madde (örn: Parasetamol 500mg)",
-  "dosage": "Standart doz (örn: Yetişkin: 1-2 tablet)",
-  "frequency": "Kullanım sıklığı (örn: Günde 3-4 kez, her 4-6 saatte bir)",
-  "purpose": "Ne için kullanılır - hastalıklar ve belirtiler (2-3 cümle açıklama)",
-  "instructions": "Nasıl kullanılır, dikkat edilmesi gerekenler (tok/aç karnına, su ile vs)",
-  "sideEffects": "Olası yan etkiler (en önemli 3-5 tanesi)",
-  "expiryDate": "Kutu üzerinde son kullanma tarihi varsa YYYY-MM formatında, yoksa null"
+  const text = extractText(await callClaude("medicine_image", { image: base64Image, mimeType }));
+  const parsed = parseJson<MedicineImageAnalysis>(text);
+  return parsed ? clean(parsed) : {};
 }
 
-Önemli: Tüm bilgileri Türkçe yaz. Eğer görselde yazı varsa (ilaç adı, SKT gibi) mutlaka oku.`,
-          },
-        ],
-      },
-    ],
-  });
-
-  const text = extractText(response);
-
-  try {
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (jsonMatch) {
-      return JSON.parse(jsonMatch[0]) as MedicineImageAnalysis;
-    }
-  } catch {
-    // ignore parse error
-  }
-
-  return { name: "Bilinmeyen İlaç" };
-}
-
-export async function getSkipAdvice(
-  medicineName: string,
-  reason: string
-): Promise<string> {
-  const response = await callClaude({
-    model: MODEL_LIGHT,
-    max_tokens: 4000,
-    system: `Sen Türkçe konuşan, empatik ve bilgili bir eczacı asistanısın.
-Kullanıcı bir ilacını atladığında, nedenine göre kısa ve pratik önerilerde bulunuyorsun.
-Yanıtın 2-4 cümle olsun. Gerektiğinde doktora danışmayı hatırlat.`,
-    messages: [{
-      role: "user",
-      content: `İlaç adı: ${medicineName}\nAtlama nedeni: ${reason}\n\nBu durumda ne yapmalıyım?`,
-    }],
-  });
-  return extractText(response);
-}
-
-export async function getMedicineInfoByName(name: string): Promise<PrescriptionMedicine> {
-  const response = await callClaude({
-    model: MODEL_LIGHT,
-    max_tokens: 4000,
-    system: `Sen bir eczacı asistanısın. Türkçe ilaç bilgisi veriyorsun. Yanıtını JSON formatında ver.`,
-    messages: [{
-      role: "user",
-      content: `"${name}" ilacı hakkında bilgi ver. JSON formatında yanıt ver:
-{
-  "name": "İlaç adı ve formu",
-  "dosage": "Standart doz",
-  "frequency": "Kullanım sıklığı",
-  "duration": null,
-  "instructions": "Nasıl kullanılır (tok/aç karnına vs)",
-  "purpose": "Ne için kullanılır (2-3 cümle)",
-  "sideEffects": "Önemli yan etkiler"
-}`,
-    }],
-  });
-  const text = extractText(response);
-  try {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) return JSON.parse(match[0]) as PrescriptionMedicine;
-  } catch {}
-  return { name };
+// İsimden genel ilaç bilgisi (ad düzeltme için). Doz alanları dönmez.
+export async function getMedicineInfoByName(
+  name: string
+): Promise<Pick<PrescriptionMedicine, "name" | "purpose" | "sideEffects">> {
+  const text = extractText(await callClaude("medicine_name", { name }));
+  const parsed = parseJson<Pick<PrescriptionMedicine, "name" | "purpose" | "sideEffects">>(text);
+  return parsed ? clean(parsed) : { name };
 }
 
 export async function chatWithAssistant(
   messages: { role: "user" | "assistant"; content: string }[],
   userMessage: string
 ): Promise<string> {
-  const response = await callClaude({
-    model: MODEL_LIGHT,
-    max_tokens: 4000,
-    system: `Sen Türkçe konuşan, yardımcı ve bilgili bir eczacı asistanısın.
-İlaçlar, ilaç kullanımı, yan etkiler, ilaç etkileşimleri ve sağlık konularında bilgi veriyorsun.
-Her zaman samimi, anlaşılır ve güvenilir bilgi veriyorsun.
-Ciddi tıbbi durumlarda mutlaka doktora başvurulmasını tavsiye ediyorsun.
-Yanıtların kısa, net ve Türkçe olsun.`,
-    messages: [
-      ...messages,
-      { role: "user", content: userMessage },
-    ],
-  });
-
-  return extractText(response);
+  return extractText(await callClaude("chat", { history: messages, message: userMessage }));
 }

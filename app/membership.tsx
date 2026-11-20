@@ -58,7 +58,6 @@ const TIERS: TierDef[] = [
       "Reçete fotoğrafını AI ile otomatik analiz",
       "İlaç kutusu fotoğrafından AI ile form doldurma",
       "AI sohbet asistanı",
-      "Doz atlarken AI tavsiyesi",
     ],
   },
   {

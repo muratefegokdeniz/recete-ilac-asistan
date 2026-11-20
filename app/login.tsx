@@ -18,9 +18,9 @@ const BLOOD_TYPES = ["A+", "A-", "B+", "B-", "AB+", "AB-", "0+", "0-", "Bilmiyor
 
 const ONBOARDING_STEPS = [
   { title: "Merhaba! Adınız nedir?", subtitle: "Sizi tanımak için adınızı öğrenmek istiyoruz.", icon: "person-circle-outline" as const },
-  { title: "Yaşınız ve cinsiyetiniz?", subtitle: "Daha iyi öneriler için bu bilgilere ihtiyacımız var.", icon: "calendar-outline" as const },
-  { title: "Fiziksel bilgileriniz", subtitle: "İlaç dozajı hesaplamalarında yardımcı olabilir.", icon: "body-outline" as const },
-  { title: "Sağlık geçmişiniz", subtitle: "Alerjiler ve kronik hastalıklar için uyarı alabilirsiniz.", icon: "medkit-outline" as const },
+  { title: "Yaşınız ve cinsiyetiniz?", subtitle: "Profilinde görünür. İstersen boş bırakabilirsin.", icon: "calendar-outline" as const },
+  { title: "Kan grubunuz", subtitle: "Acil bir durumda profilinden hızlıca bakabilmen için.", icon: "water-outline" as const },
+  { title: "Sağlık geçmişiniz", subtitle: "Doktoruna veya eczacına gösterebilmen için profilinde saklanır.", icon: "medkit-outline" as const },
 ];
 
 type ScreenMode = "login" | "register" | "onboarding" | "tutorial-prompt" | "child" | "child-pending";
@@ -255,20 +255,10 @@ export default function LoginScreen() {
               </View>
             )}
 
-            {/* Step 2: Boy + Kilo + Kan Grubu */}
+            {/* Step 2: Kan Grubu (boy/kilo bilinçli olarak sorulmuyor) */}
             {step === 2 && (
               <View style={styles.obFields}>
-                <View style={styles.rowFields}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.obLabel}>Boy (cm)</Text>
-                    <TextInput style={styles.obInput} value={draft.height?.toString() ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, height: parseInt(v) || undefined }))} placeholder="170" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={3} />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.obLabel}>Kilo (kg)</Text>
-                    <TextInput style={styles.obInput} value={draft.weight?.toString() ?? ""} onChangeText={(v) => setDraft((d) => ({ ...d, weight: parseInt(v) || undefined }))} placeholder="70" placeholderTextColor={Colors.textMuted} keyboardType="numeric" maxLength={3} />
-                  </View>
-                </View>
-                <Text style={[styles.obLabel, { marginTop: 20 }]}>Kan Grubu</Text>
+                <Text style={styles.obLabel}>Kan Grubu</Text>
                 <View style={styles.chipRow}>
                   {BLOOD_TYPES.map((b) => (
                     <TouchableOpacity key={b} style={[styles.chip, draft.bloodType === b && styles.chipActive]} onPress={() => setDraft((d) => ({ ...d, bloodType: b }))}>

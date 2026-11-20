@@ -33,14 +33,14 @@ Reçete tara, ilaç hatırlatıcı kur, aileni akıllı ilaç takibiyle koru.
 ## 3. App Store — Alt Başlık / Subtitle (max 30 karakter)
 
 ```
-Doz hatırlatıcı, aile takibi
+Hatırlatıcı ve aile takibi
 ```
-(28 karakter — uygulama adındaki "İlaç"/"Reçete" kelimeleri tekrar edilmedi; Apple ad + alt başlık + anahtar kelimeleri birlikte indeksliyor)
+(26 karakter — uygulama adındaki "İlaç"/"Reçete" kelimeleri tekrar edilmedi; Apple ad + alt başlık + anahtar kelimeleri birlikte indeksliyor)
 
 ## 4. App Store — Tanıtım Metni / Promotional Text (max 170 karakter, incelemesiz güncellenebilir)
 
 ```
-Reçeteni fotoğrafla, yapay zeka ilaçlarını okusun. Doz hatırlatıcıları kur, ilaç dolabını ve çocuklarının ilaçlarını tek ekrandan takip et.
+Reçeteni fotoğrafla, yapay zeka ilaçlarını okusun. İlaç hatırlatıcıları kur, ilaç dolabını ve çocuklarının ilaçlarını tek ekrandan takip et.
 ```
 
 ---
@@ -51,10 +51,10 @@ Reçeteni fotoğrafla, yapay zeka ilaçlarını okusun. Doz hatırlatıcıları 
 İlaç Asistanı, reçetelerini, ilaçlarını ve çocuklarının ilaç takibini tek bir yerden düzenli tutman için geliştirilmiş ücretsiz bir uygulamadır.
 
 REÇETE TARAMA
-Reçetenin fotoğrafını çek ya da ilaç adlarını yaz; yapay zeka ilaç isimlerini, dozları ve kullanım sıklığını senin için çıkarsın. Sonuçları kaydetmeden önce gözden geçirip düzeltebilirsin.
+Reçetenin fotoğrafını çek; yapay zeka reçetende yazan ilaçları ve doktorunun yazdığı kullanım bilgilerini okuyup düzenli bir listeye çevirsin. Reçetede yazmayan bir bilgiyi tahmin etmez. Sonuçları kaydetmeden önce gözden geçirip düzeltebilirsin.
 
 GÜNLÜK İLAÇ PROGRAMI VE HATIRLATICILAR
-Sabah, öğle ve akşam dozlarını kaçırma. Belirlediğin saatlerde bildirim gelir, "Aldım" ya da "Atla" diyerek takibini tek dokunuşla güncellersin.
+Sabah, öğle ve akşam ilaçlarını kaçırma. Doktorunun reçetesine göre belirlediğin saatlerde bildirim gelir, "Aldım" ya da "Atla" diyerek takibini tek dokunuşla güncellersin.
 
 İLAÇ DOLABI
 Evindeki ilaçları fotoğraflarıyla birlikte dijital bir dolapta tut; son kullanma tarihi geçmiş veya yaklaşan ilaçları bir bakışta gör.
@@ -63,7 +63,7 @@ Evindeki ilaçları fotoğraflarıyla birlikte dijital bir dolapta tut; son kull
 Çocuklarının ilaçlarını ve aşı takvimini kendi hesabından yönet. Tüm ailenin günlük programını tek ekranda gör; istersen çocuğun kendi telefonundan, senin onayınla, yalnızca kendi dozlarını işaretleyebileceği basit bir ekrana bağlanabilir.
 
 İLAÇ ASİSTANI
-İlaç etkileşimleri, yan etkiler, kullanım zamanlaması ve beslenmeyle ilişkisi hakkındaki sorularını yapay zeka destekli asistana sor. Kullandığın ilaçların etkileşimini tek dokunuşla sorabilirsin.
+İlaç etkileşimleri, yan etkiler ve ilaçların beslenmeyle ilişkisi hakkında genel sorularını yapay zeka destekli asistana sor. Asistan doz önermez; doz soruları için seni eczacına veya doktoruna yönlendirir. Kullandığın ilaçların etkileşimini tek dokunuşla sorabilirsin.
 
 TAKVİM
 Aylık doz programını ve ne kadarını düzenli aldığını takvim üzerinde izle.
@@ -72,7 +72,7 @@ GİZLİLİK
 Yapay zeka özellikleri yalnızca sen izin verdikten sonra çalışır; iznini istediğin zaman Profil'den kapatabilirsin. Verilerin reklam için kullanılmaz ve satılmaz. Hesabını ve tüm verilerini uygulama içinden kalıcı olarak silebilirsin.
 
 ÖNEMLİ
-İlaç Asistanı bir tıbbi cihaz değildir; teşhis koymaz ve tedavi önermez. Yapay zekanın ürettiği bilgiler hatalı olabilir; ilaç kullanımınla ilgili kararlar için doktoruna veya eczacına danış.
+İlaç Asistanı bir tıbbi cihaz değildir; teşhis koymaz, tedavi önermez ve ilaç dozu hesaplamaz veya önermez. Yapay zekanın ürettiği bilgiler hatalı olabilir; ilaç kullanımınla ilgili kararlar için doktoruna veya eczacına danış.
 ```
 
 ---
@@ -80,9 +80,9 @@ Yapay zeka özellikleri yalnızca sen izin verdikten sonra çalışır; iznini i
 ## 6. App Store — Anahtar Kelimeler (max 100 karakter, virgülle ayrılmış, boşluksuz)
 
 ```
-hatırlatıcı,doz,eczane,aile,sağlık,tedavi,alarm,dolap,vitamin,hap,şurup,çocuk,aşı,takvim,antibiyotik
+hatırlatıcı,eczane,aile,sağlık,tedavi,alarm,dolap,vitamin,hap,şurup,çocuk,aşı,takvim,antibiyotik
 ```
-(100 karakter — "ilaç", "reçete", "asistan", "takip" ad/alt başlıkta zaten var, tekrar edilmedi)
+(96 karakter — "doz" kelimesi 1.4.2 reddinden sonra çıkarıldı; "ilaç", "reçete", "asistan", "takip" ad/alt başlıkta zaten var, tekrar edilmedi)
 
 ---
 
@@ -190,6 +190,16 @@ listing exactly what is shared (photos, medicine details, chat messages). If the
 user declines, AI features stay off and everything else works with manual entry.
 Consent can be changed any time in Profile > "Yapay Zeka İzni". Anthropic does not
 use this data for model training.
+
+NO DOSAGE CALCULATION (Guideline 1.4.2)
+The app does not calculate, suggest or complete drug dosages. The AI only
+transcribes what is literally written on the user's prescription or medicine
+box; if a dose, frequency or duration is not written there, the field is left
+empty and labelled "Doz reçetede belirtilmemiş" (dose not specified on the
+prescription). The user selects the frequency from their prescription, and the
+app only turns it into reminder times. The app does not ask for body weight, and
+the assistant is instructed not to give doses or quantities and to refer such
+questions to a pharmacist or doctor.
 
 MEDICAL SAFETY (Guideline 1.4.1)
 Every AI result shows a warning that it may be inaccurate and must be checked

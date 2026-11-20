@@ -24,7 +24,7 @@ import {
 import { ActiveMedicine, TakenDose, Medicine, FamilyMember } from "../../types";
 import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
 import { requestPermissions, scheduleDailyReminder, cancelReminders, notifyMissedChildDose } from "../../services/notifications";
-import { getSkipAdvice, analyzeMedicineImage } from "../../services/anthropic";
+import { analyzeMedicineImage } from "../../services/anthropic";
 import { fallbackMemberColor } from "../../constants/MemberColors";
 import { useAuth } from "../../context/AuthContext";
 
@@ -175,8 +175,8 @@ export default function ActiveScreen() {
   // Frequency/mealTiming'i AI'nın serbest metninden değil, kullanıcının
   // FrequencyPicker/MealTimingPicker'dan seçmesinden alıyoruz — calcReminderTimes
   // sabit bir string eşlemesine güveniyor, tutmayan bir AI metni hatırlatma
-  // saatlerini sessizce yanlış hesaplatabilir. AI sadece isim/doz/not dolduruyor,
-  // kullanıcı sıklığı ve saatleri manuel formda gözden geçirip onaylıyor.
+  // saatlerini sessizce yanlış hesaplatabilir. AI yalnızca ilacın adını dolduruyor;
+  // doz, sıklık ve saatleri kullanıcı reçetesine bakarak kendisi giriyor.
   async function pickAndAnalyzePhoto(fromCamera: boolean) {
     setPhotoError(null);
     let result: ImagePicker.ImagePickerResult;
@@ -203,14 +203,11 @@ export default function ActiveScreen() {
       }
       const mimeType = asset.mimeType ?? detectMimeType(base64);
       const info = await analyzeMedicineImage(base64, mimeType);
-      const mt = info.instructions ? parseMealTiming(info.instructions) : null;
-      const notesParts = [info.purpose, info.instructions].filter(Boolean);
+      // Kutudan yalnızca ilacın adı okunuyor. Doz, sıklık ve saatleri kullanıcı
+      // reçetesine bakarak kendisi girer (AI doz önermez).
       setForm((f) => ({
         ...f,
         medicineName: info.name || f.medicineName,
-        dosage: info.dosage || f.dosage,
-        mealTiming: mt ?? f.mealTiming,
-        notes: notesParts.length > 0 ? notesParts.join(" ") : f.notes,
         fromCabinetId: "",
       }));
       setPhotoAiFilled(true);
@@ -291,6 +288,10 @@ export default function ActiveScreen() {
     setSkipModal({ medicineId: activeMedicineId, medicineName: med?.medicineName ?? "İlaç", scheduledTime });
   }
 
+  const SKIP_GUIDANCE =
+    "Kaydını aldık. Kaçırdığın dozu sonradan alıp almaman ya da bir sonraki dozu nasıl alacağın ilaca göre değişir. " +
+    "Kendi kendine doz ekleme veya ikiye katlama. İlacın kullanma talimatına (prospektüs) bak ya da eczacına veya doktoruna danış.";
+
   async function confirmSkip() {
     if (!skipModal) return;
     const reason = skipReason === "Diğer" ? skipCustom : skipReason;
@@ -300,16 +301,10 @@ export default function ActiveScreen() {
       await skipDose({ id: `${skipModal.medicineId}_${skipModal.scheduledTime}`, scheduledTime: skipModal.scheduledTime }, skipModal.medicineId);
       loadData();
     } catch (e: any) { console.error("Doz atlanamadı:", e); }
-    // AI tavsiyesi ikincil/opsiyonel bir özellik — AI erişimi yoksa sunucuya
-    // (claude-proxy) hiç istek atmadan sessizce var olan fallback'e düşüyoruz.
-    if (!hasAiAccess(profile)) {
-      setSkipAdvice("Şu an öneri alınamadı.");
-      return;
-    }
-    setSkipLoading(true); setSkipAdvice(null);
-    try { setSkipAdvice(await getSkipAdvice(skipModal.medicineName, reason)); }
-    catch { setSkipAdvice("Şu an öneri alınamadı."); }
-    finally { setSkipLoading(false); }
+    // Kaçırılan doz için AI tavsiyesi bilinçli olarak YOK (App Store 1.4.2):
+    // ne yapılacağı ilaca ve kişiye göre değişir, bunu yalnızca prospektüs,
+    // eczacı veya doktor söyleyebilir. Sabit bir yönlendirme gösteriyoruz.
+    setSkipAdvice(SKIP_GUIDANCE);
   }
 
   function resetForm() {
@@ -579,7 +574,7 @@ export default function ActiveScreen() {
                     </View>
                     <Text style={styles.photoModeTitle}>İlacı Fotoğrafla</Text>
                     <Text style={styles.photoModeDesc}>
-                      İlacın kutusunu fotoğrafla, AI ismini ve dozunu otomatik doldursun — sıklığı ve saatleri sonraki adımda kendin ayarlarsın.
+                      İlacın kutusunu fotoğrafla, yapay zeka adını okusun. Dozu, sıklığı ve saatleri reçetene bakarak sonraki adımda kendin girersin.
                     </Text>
                     {photoError && (
                       <View style={styles.addErrorBox}>
@@ -749,15 +744,15 @@ export default function ActiveScreen() {
                     <Text style={styles.addErrorText}>{skipReasonError}</Text>
                   </View>
                 )}
-                <Button title={skipLoading ? "AI Öneri Hazırlanıyor..." : "Devam Et"} onPress={confirmSkip} variant="primary" fullWidth loading={skipLoading} disabled={!skipReason} size="lg" style={{ marginTop: 8 }} />
+                <Button title="Devam Et" onPress={confirmSkip} variant="primary" fullWidth loading={skipLoading} disabled={!skipReason} size="lg" style={{ marginTop: 8 }} />
               </>
             ) : (
               <View style={styles.adviceContainer}>
                 <View style={styles.adviceHeader}>
                   <View style={styles.adviceIconWrap}>
-                    <Ionicons name="sparkles" size={20} color={Colors.primary} />
+                    <Ionicons name="information-circle-outline" size={20} color={Colors.primary} />
                   </View>
-                  <Text style={styles.adviceTitle}>AI Önerisi</Text>
+                  <Text style={styles.adviceTitle}>Doz atlandı</Text>
                 </View>
                 <Text style={styles.adviceText}>{skipAdvice}</Text>
                 <Button title="Tamam" onPress={() => setSkipModal(null)} variant="primary" fullWidth size="lg" style={{ marginTop: 16 }} />
@@ -1013,14 +1008,6 @@ async function uriToBase64(uri: string): Promise<string | null> {
       reader.readAsDataURL(blob);
     });
   } catch { return null; }
-}
-
-function parseMealTiming(text: string): "ac" | "tok" | "farketmez" | null {
-  const lower = text.toLowerCase();
-  if (lower.includes("aç karn") || lower.includes("ac karn") || lower.includes("yemekten önce")) return "ac";
-  if (lower.includes("tok karn") || lower.includes("yemekle") || lower.includes("yemekten sonra") || lower.includes("yemeklerle")) return "tok";
-  if (lower.includes("farketmez") || lower.includes("fark etmez")) return "farketmez";
-  return null;
 }
 
 function formatDate(date: Date): string {

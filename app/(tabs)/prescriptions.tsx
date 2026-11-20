@@ -17,7 +17,7 @@ import * as ImagePicker from "expo-image-picker";
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { Colors, Radius, Shadows } from "../../constants/Colors";
-import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, UpgradePromptModal, AiAccuracyNote, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
+import { Card, Button, Badge, SectionHeader, EmptyState, ConfirmModal, TimePickerField, FrequencyPicker, UpgradePromptModal, AiAccuracyNote, KeyboardDoneBar, KEYBOARD_DONE_ID } from "../../components/ui";
 import { analyzePrescription, analyzePrescriptionText, getMedicineInfoByName } from "../../services/anthropic";
 import { getAllPrescriptions, savePrescription, deletePrescription, addActiveMedicine, hasAiAccess } from "../../services/database";
 import { uploadUserImage, getSignedImageUrl, deleteUserImage } from "../../services/storage";
@@ -26,6 +26,7 @@ import { useTutorial } from "../../context/TutorialContext";
 import { useTutorialHighlight } from "../../hooks/useTutorialHighlight";
 import { HeaderProfileButton } from "../../components/HeaderProfileButton";
 import { useAuth } from "../../context/AuthContext";
+import { FREQUENCY_OPTIONS } from "../../constants/MedicineOptions";
 
 const SAMPLE_TUTORIAL_MEDICINE: PrescriptionMedicine = {
   name: "Amoksisilin 500mg Kapsül",
@@ -56,7 +57,7 @@ export default function PrescriptionScreen() {
   const [addedToActive, setAddedToActive] = useState(false);
   const [showTimeModal, setShowTimeModal] = useState(false);
   const [pendingAnalysis, setPendingAnalysis] = useState<PrescriptionAnalysis | null>(null);
-  const [medicineTimings, setMedicineTimings] = useState<{ name: string; frequency: string; firstTime: string }[]>([]);
+  const [medicineTimings, setMedicineTimings] = useState<{ name: string; frequency: string; rxFrequency?: string; firstTime: string }[]>([]);
 
   const [correctingMed, setCorrectingMed] = useState<{ prescId: string; medIdx: number } | null>(null);
   const [correctName, setCorrectName] = useState("");
@@ -177,7 +178,10 @@ export default function PrescriptionScreen() {
     setMedicineTimings(
       a.medicines.map((m) => ({
         name: m.name,
-        frequency: m.frequency ?? "Günde 1 kez",
+        // Sıklığı kullanıcı seçer. Reçetedeki ifade listedeki bir seçenekle
+        // birebir eşleşiyorsa önceden seçili gelir, yoksa boş kalır.
+        frequency: m.frequency && FREQUENCY_OPTIONS.includes(m.frequency) ? m.frequency : "",
+        rxFrequency: m.frequency,
         firstTime: "08:00",
       }))
     );
@@ -186,6 +190,10 @@ export default function PrescriptionScreen() {
 
   async function confirmAddToActive() {
     if (!pendingAnalysis) return;
+    if (medicineTimings.some((t) => !t.frequency)) {
+      Alert.alert("Sıklık seçilmedi", "Her ilaç için reçetende yazan kullanım sıklığını seç.");
+      return;
+    }
     setAddingToActive(true);
     try {
       for (let i = 0; i < pendingAnalysis.medicines.length; i++) {
@@ -196,7 +204,7 @@ export default function PrescriptionScreen() {
           id: `${Date.now()}_${i}_${Math.random().toString(36).slice(2)}`,
           medicineId: "",
           medicineName: med.name,
-          dosage: med.dosage ?? "Belirtilmedi",
+          dosage: med.dosage ?? "Reçetede belirtilmemiş",
           frequency: timing.frequency,
           startDate: new Date().toISOString().split("T")[0],
           reminderTimes,
@@ -480,6 +488,7 @@ export default function PrescriptionScreen() {
                             {m.dosage ? <Text style={styles.expandedMedDetail}>{m.dosage}</Text> : null}
                             {m.frequency ? <Text style={styles.expandedMedDetail}>{m.frequency}</Text> : null}
                             {m.duration ? <Text style={styles.expandedMedDetail}>{m.duration}</Text> : null}
+                            {!m.dosage && !m.frequency ? <Text style={[styles.expandedMedDetail, { fontStyle: "italic" }]}>Doz reçetede belirtilmemiş</Text> : null}
                           </View>
                           {!!m.instructions && (
                             <View style={styles.expandedInstructionRow}>
@@ -557,7 +566,7 @@ export default function PrescriptionScreen() {
                   <View style={styles.manualInfoBox}>
                     <Ionicons name="information-circle" size={16} color={Colors.primary} />
                     <Text style={styles.manualInfoText}>
-                      İlaç adlarını yazın, AI doz, kullanım ve yan etki bilgilerini otomatik tamamlayacak.
+                      İlaçları reçetende yazdığı gibi girin. Yapay zeka yazdıklarınızı düzenli bir listeye ayırır; doz veya sıklık eklemez.
                     </Text>
                   </View>
                   <View style={styles.manualRow}>
@@ -572,7 +581,7 @@ export default function PrescriptionScreen() {
                   </View>
                   <View style={styles.manualField}>
                     <Text style={styles.manualLabel}>İlaçlar *</Text>
-                    <Text style={styles.manualHint}>Her satıra bir ilaç yazın. Doz ve süre bilgisi ekleyebilirsiniz.</Text>
+                    <Text style={styles.manualHint}>Her satıra bir ilaç yazın. Reçetede yazıyorsa dozu, sıklığı ve süreyi de ekleyin (örn. "Amoksisilin 500 mg, 1 kapsül, günde 3 kez, 7 gün").</Text>
                     <TextInput
                       style={styles.manualMedsInput}
                       editable={false}
@@ -606,7 +615,7 @@ export default function PrescriptionScreen() {
                 <Ionicons name="sparkles" size={22} color={Colors.primary} />
                 <Text style={styles.tutorialIntroTitle}>AI Reçete Analizi</Text>
                 <Text style={styles.tutorialIntroBody}>
-                  Reçeteni fotoğrafladığında ya da elle girdiğinde, yapay zeka ilaç adını, dozunu, kullanım sıklığını, kullanım şeklini ve yan etkilerini otomatik olarak çıkarır. Örnek bir sonuç şöyle görünür:
+                  Reçeteni fotoğrafladığında yapay zeka reçetede yazan ilaçları ve doktorunun yazdığı kullanım bilgilerini okuyup listeler. Reçetede yazmayan bir bilgiyi tahmin etmez. Örnek bir sonuç şöyle görünür:
                 </Text>
               </View>
               <MedicineCard med={SAMPLE_TUTORIAL_MEDICINE} />
@@ -708,7 +717,7 @@ export default function PrescriptionScreen() {
                 <View style={styles.manualInfoBox}>
                   <Ionicons name="information-circle" size={16} color={Colors.primary} />
                   <Text style={styles.manualInfoText}>
-                    İlaç adlarını yazın, AI doz, kullanım ve yan etki bilgilerini otomatik tamamlayacak.
+                    İlaçları reçetende yazdığı gibi girin. Yapay zeka yazdıklarınızı düzenli bir listeye ayırır; doz veya sıklık eklemez.
                   </Text>
                 </View>
 
@@ -734,7 +743,7 @@ export default function PrescriptionScreen() {
                 <View style={styles.manualField}>
                   <Text style={styles.manualLabel}>İlaçlar *</Text>
                   <Text style={styles.manualHint}>
-                    Her satıra bir ilaç yazın. Doz ve süre bilgisi ekleyebilirsiniz.
+                    Her satıra bir ilaç yazın. Reçetede yazıyorsa dozu, sıklığı ve süreyi de ekleyin (örn. "Amoksisilin 500 mg, 1 kapsül, günde 3 kez, 7 gün").
                   </Text>
                   <TextInput
                     style={styles.manualMedsInput}
@@ -800,16 +809,24 @@ export default function PrescriptionScreen() {
             </View>
             <ScrollView contentContainerStyle={styles.modalContent}>
               <Text style={styles.timeModalDesc}>
-                Her ilaç için ilk alım saatini gir. Diğer saatler sıklığa göre otomatik hesaplanacak.
+                Her ilaç için reçetende yazan kullanım sıklığını seç ve ilk hatırlatma saatini gir. Hatırlatmalar seçtiğin sıklığa göre gün içine dağıtılır.
               </Text>
               {medicineTimings.map((mt, i) => {
-                const times = calcReminderTimes(mt.firstTime, mt.frequency);
+                const times = mt.frequency ? calcReminderTimes(mt.firstTime, mt.frequency) : [];
                 return (
                   <View key={i} style={styles.timingRow}>
                     <View style={styles.timingMedInfo}>
                       <Text style={styles.timingMedName} numberOfLines={1}>{mt.name}</Text>
-                      <Text style={styles.timingFreq}>{mt.frequency}</Text>
+                      <Text style={styles.timingFreq}>
+                        {mt.rxFrequency ? `Reçetede: ${mt.rxFrequency}` : "Reçetede sıklık yazmıyor"}
+                      </Text>
                     </View>
+                    <FrequencyPicker
+                      value={mt.frequency}
+                      onChange={(v) => setMedicineTimings((prev) =>
+                        prev.map((x, j) => j === i ? { ...x, frequency: v } : x)
+                      )}
+                    />
                     <View style={styles.timingInputWrap}>
                       <TimePickerField
                         value={mt.firstTime}
@@ -960,7 +977,9 @@ function MedicineCard({ med }: { med: PrescriptionMedicine }) {
         </View>
         <View style={styles.medHeaderText}>
           <Text style={styles.medName}>{med.name}</Text>
-          {med.dosage && <Text style={styles.medDosage}>{med.dosage}</Text>}
+          {med.dosage
+            ? <Text style={styles.medDosage}>{med.dosage}</Text>
+            : <Text style={[styles.medDosage, { fontStyle: "italic" }]}>Doz reçetede belirtilmemiş</Text>}
         </View>
       </View>
 
@@ -978,6 +997,12 @@ function MedicineCard({ med }: { med: PrescriptionMedicine }) {
           </View>
         )}
       </View>
+
+      {(!med.dosage || !med.frequency) && (
+        <Text style={styles.missingRxNote}>
+          Reçetede yazmayan doz veya sıklık bilgisini doktorundan ya da eczacından öğren.
+        </Text>
+      )}
 
       {med.instructions && (
         <View style={styles.instructionBox}>
@@ -1314,6 +1339,7 @@ const styles = StyleSheet.create({
   medHeaderText: { flex: 1 },
   medName: { fontSize: 16, fontWeight: "700", color: Colors.text },
   medDosage: { fontSize: 13, color: Colors.textSecondary, marginTop: 2 },
+  missingRxNote: { fontSize: 12, color: Colors.textMuted, marginTop: 8, lineHeight: 17 },
 
   usageSummary: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginBottom: 4 },
   usageChip: {

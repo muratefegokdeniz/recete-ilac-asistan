@@ -54,9 +54,9 @@ export function AiAccuracyNote({ style }: { style?: ViewStyle }) {
     <View style={[aiNoteStyles.box, style]}>
       <Ionicons name="warning-outline" size={16} color={Colors.warning} />
       <Text style={aiNoteStyles.text}>
-        Bu bilgiler yapay zeka ile çıkarıldı ve hatalı olabilir. İlaç adını, dozu ve kullanım
-        sıklığını reçetenizle veya ilaç kutusuyla karşılaştırın; emin değilseniz doktorunuza
-        ya da eczacınıza danışın.
+        Bu bilgiler yapay zeka ile okundu ve hatalı olabilir. İlaç adını ve reçetedeki
+        kullanım bilgilerini reçetenizle karşılaştırın. Uygulama doz önermez; dozu her zaman
+        doktorunuzun reçetesine göre kullanın, emin değilseniz eczacınıza danışın.
       </Text>
     </View>
   );
