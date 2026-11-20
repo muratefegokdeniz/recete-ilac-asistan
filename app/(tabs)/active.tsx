@@ -534,11 +534,11 @@ export default function ActiveScreen() {
           <View style={styles.modeSwitcher}>
             <TouchableOpacity style={[styles.modeTab, addMode === "manual" && styles.modeTabActive]} onPress={() => setAddMode("manual")}>
               <MaterialIcons name="edit" size={16} color={addMode === "manual" ? Colors.primary : Colors.textMuted} />
-              <Text style={[styles.modeTabText, addMode === "manual" && styles.modeTabTextActive]}>Manuel Gir</Text>
+              <Text style={[styles.modeTabText, addMode === "manual" && styles.modeTabTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Manuel Gir</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[styles.modeTab, addMode === "cabinet" && styles.modeTabActive]} onPress={() => setAddMode("cabinet")}>
               <MaterialIcons name="medical-services" size={16} color={addMode === "cabinet" ? Colors.primary : Colors.textMuted} />
-              <Text style={[styles.modeTabText, addMode === "cabinet" && styles.modeTabTextActive]}>İlaç Dolabımdan Seç</Text>
+              <Text style={[styles.modeTabText, addMode === "cabinet" && styles.modeTabTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>Dolabımdan Seç</Text>
               {cabinetMedicines.length > 0 && (
                 <View style={styles.modeBadge}><Text style={styles.modeBadgeText}>{cabinetMedicines.length}</Text></View>
               )}
@@ -552,7 +552,7 @@ export default function ActiveScreen() {
               }}
             >
               <MaterialIcons name="photo-camera" size={16} color={addMode === "photo" ? Colors.primary : Colors.textMuted} />
-              <Text style={[styles.modeTabText, addMode === "photo" && styles.modeTabTextActive]}>AI Fotoğraf</Text>
+              <Text style={[styles.modeTabText, addMode === "photo" && styles.modeTabTextActive]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>AI Fotoğraf</Text>
             </TouchableOpacity>
           </View>
 
@@ -1252,11 +1252,11 @@ const styles = StyleSheet.create({
     flexDirection: "row", marginHorizontal: 16, marginTop: 12, marginBottom: 4,
     backgroundColor: Colors.surfaceAlt, borderRadius: Radius.lg, padding: 4,
   },
-  modeTab: { flex: 1, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6, paddingVertical: 9, borderRadius: Radius.md },
+  modeTab: { flex: 1, minWidth: 0, flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, paddingVertical: 8, paddingHorizontal: 4, borderRadius: Radius.md },
   modeTabActive: { backgroundColor: Colors.surface, shadowColor: Colors.text, shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.08, shadowRadius: 3, elevation: 2 },
-  modeTabText: { fontSize: 13, fontWeight: "500", color: Colors.textMuted },
+  modeTabText: { fontSize: 13, fontWeight: "500", color: Colors.textMuted, textAlign: "center" },
   modeTabTextActive: { color: Colors.primary, fontWeight: "700" },
-  modeBadge: { minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
+  modeBadge: { position: "absolute", top: 4, right: 6, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: Colors.primary, alignItems: "center", justifyContent: "center", paddingHorizontal: 4 },
   modeBadgeText: { fontSize: 10, color: Colors.textInverse, fontWeight: "700" },
 
   photoModeArea: { flex: 1, alignItems: "center", justifyContent: "center", padding: 32 },
