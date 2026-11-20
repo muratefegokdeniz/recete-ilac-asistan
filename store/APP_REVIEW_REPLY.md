@@ -13,7 +13,7 @@ Thank you for the review. We understand the concern under Guideline 1.4.2 and ha
 
 1. **No AI-generated dosages.** Previously, when a prescription did not state a dose, frequency or duration, the AI filled these fields in from general medical knowledge. This has been removed. The AI now only transcribes what is literally written on the user's own prescription. If a dose or frequency is not written there, the field stays empty and the app shows "Doz reçetede belirtilmemiş" (dose not specified on the prescription) with a note to ask a doctor or pharmacist.
 
-2. **Medicine box scanning no longer returns dosage.** Scanning a medicine box now only reads the product name, active ingredient and expiry date for the user's home medicine cabinet. "Standard dose" and frequency suggestions were removed.
+2. **Medicine box scanning no longer returns dosage.** Scanning a medicine box now reads only what is printed on the box (product name, active ingredient and expiry date) for the user's home medicine cabinet, plus a short general description of what the medicine is used for and its common side effects. It never returns a dose, amount or frequency; "standard dose" and frequency suggestions were removed.
 
 3. **Manual entry is no longer auto-completed.** When the user types medicine names, the app no longer adds doses or frequencies. The user enters what their doctor prescribed.
 
@@ -28,6 +28,8 @@ Thank you for the review. We understand the concern under Guideline 1.4.2 and ha
 8. **App Store screenshots and description updated** so they no longer show or mention dosage information.
 
 İlaç Asistanı is now a personal prescription organizer and medication reminder: users keep their own prescriptions, a home medicine cabinet with expiry dates, and reminders based on what their doctor prescribed. The demo account in the App Review Information section has been reset with sample data that contains no generated dosage information.
+
+Attached screenshots from the new build: (1) a saved prescription where the dose is not written, shown as "Doz reçetede belirtilmemiş"; (2) the reminder screen where the user selects the frequency from their prescription; (3) the fixed message shown after a dose is skipped.
 
 Thank you for your time. We are happy to provide any additional information.
 
