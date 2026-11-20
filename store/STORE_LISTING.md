@@ -170,8 +170,7 @@ simulator/emulator ya da web build üzerinden Playwright ile otomatik, doğru
 Thank you for reviewing İlaç Asistanı (Medicine Assistant).
 
 DEMO ACCOUNT
-Email: <demo hesap e-postası>
-Password: <demo hesap şifresi>
+The demo account credentials are entered in the Sign-In Information section.
 The account already contains sample prescriptions, medicines in the cabinet,
 active reminders and a child profile so every feature can be reviewed.
 
@@ -197,9 +196,11 @@ transcribes what is literally written on the user's prescription or medicine
 box; if a dose, frequency or duration is not written there, the field is left
 empty and labelled "Doz reçetede belirtilmemiş" (dose not specified on the
 prescription). The user selects the frequency from their prescription, and the
-app only turns it into reminder times. The app does not ask for body weight, and
-the assistant is instructed not to give doses or quantities and to refer such
-questions to a pharmacist or doctor.
+app only turns it into reminder times. Body weight is not requested during
+sign-up or for any feature; an optional weight field exists only in the profile
+as a personal note, is never sent to the AI and is never used for any
+calculation. The assistant is instructed not to give doses or quantities and to
+refer such questions to a pharmacist or doctor.
 
 MEDICAL SAFETY (Guideline 1.4.1)
 Every AI result shows a warning that it may be inaccurate and must be checked
