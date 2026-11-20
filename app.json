@@ -16,7 +16,7 @@
         "NSUserNotificationsUsageDescription": "İlaç hatırlatmaları için bildirim izni gerekiyor.",
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "13"
+      "buildNumber": "14"
     },
     "android": {
       "package": "com.muratefegokdeniz.receteilacasistan",
