@@ -3,6 +3,7 @@
 Yeni build yüklendikten SONRA, App Store Connect > ret mesajının altındaki
 "Reply to App Review" ile gönder. Mesaja yeni build'den 2-3 ekran görüntüsü ekle
 (reçete sonucu, "Doz reçetede belirtilmemiş" etiketi, sıklık seçme ekranı).
+Hazır görseller: `store/review_reply/r1-…r3-….png`.
 
 ---
 
